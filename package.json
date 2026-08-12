@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "sync:catalog": "tsx scripts/sync-catalog.ts"
+    "sync:catalog": "tsx scripts/sync-catalog.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

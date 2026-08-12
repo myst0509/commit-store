@@ -17,7 +17,7 @@ Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` n
 | 2 | Fulfillment interface + Printful adapter | **PARTIAL** — no live order yet |
 | 2b | Catalog cached into Postgres | **DONE** |
 | 2c | Next.js scaffold | **DONE** |
-| 3 | Storefront rendering (subdomain routing, theme, PDP) | TODO — unblocked |
+| 3 | Storefront rendering (subdomain routing, theme, PDP) | **PARTIAL** — skeleton renders, no cart |
 | 4 | Design upload + mockup compositing | TODO |
 | 5 | Stripe Connect + checkout + order pipeline | TODO — gated on step 2 |
 | 6 | Launch path | TODO |
@@ -133,7 +133,49 @@ is no per-store Tailwind build.
 `next.config.ts` allows remote images from `files.cdn.printful.com` and
 `*.supabase.co` only.
 
-## 3–7 — not started
+## 3. Storefront rendering — PARTIAL
+
+Server-rendered. `npm run build` reports `/s/[host]` and `/s/[host]/p/[slug]` as
+`ƒ (Dynamic) server-rendered on demand`, which is the requirement — PROJECT.md
+needs crawlable HTML for sellers who have no audience.
+
+| File | |
+|---|---|
+| `proxy.ts` | Host → `/s/[host]` rewrite. **Next 16 renamed Middleware to Proxy**; `middleware.ts` is the old convention |
+| `lib/store/resolve.ts` | Host parsing and store lookup, request-deduped |
+| `lib/store/products.ts` | Storefront reads, publishable key only |
+| `lib/supabase/client.ts` | `publicClient()` (RLS) vs `serviceClient()` (bypasses RLS) |
+| `app/s/[host]/` | Layout with theme injection, product grid, PDP |
+| `scripts/seed-demo.ts` | One demo store on a real blank — `npm run seed:demo` |
+
+Verified against a running server:
+
+| Host | Result |
+|---|---|
+| `demo.localhost` | 200, renders store, product, `$32.00` |
+| `demo.localhost/p/first-tee` | 200, real `<title>`, og:title/description/image, colors, sizes |
+| `nosuchstore.localhost` | 404 |
+| `localhost` | marketing page, not rewritten |
+| `app.localhost` | reserved, not rewritten |
+| store set to `draft` / `suspended` | 404 — visibility comes from RLS, not app code |
+
+**Proxy does no database work.** Pure string parsing only; the Next 16 docs are
+explicit that this layer is not for data fetching. Store resolution happens in the
+server component where it can be cached and a miss can render a real 404.
+
+**Theme is CSS custom properties** injected from `stores.theme`, filtered against
+a character allowlist — that column is seller-controlled jsonb, and spreading it
+into a style attribute unfiltered is CSS injection.
+
+Not built: cart, checkout, custom-domain verification, image optimisation beyond
+`next/image` defaults, size ordering (sizes currently sort alphabetically, so XS
+lands after L).
+
+**Open: cache invalidation on store activation.** Store status changes need to
+invalidate the resolver cache, or a seller who launches keeps seeing their own
+404 for a while. Seen in dev as a stale 404 after flipping status back to active.
+
+## 4–7 — not started
 
 ---
 
@@ -174,10 +216,15 @@ is no per-store Tailwind build.
 
 ## Chores
 
+- [ ] **Run `0002_hide_cost_basis.sql`.** Until it is applied, anonymous
+      storefront visitors can read `catalog_variants.base_cost_cents` — the
+      platform's vendor cost basis — with the publishable key that ships in
+      every browser bundle. Sellers can also read the base/fee split, which
+      PROJECT.md forbids. RLS gates rows, not columns; 0001 missed this.
 - [ ] Rotate the Printful token (exposed in chat during development)
 - [ ] `drop table notes;` — leftover from Supabase's starter, publicly readable
 - [ ] Generate `PRINTFUL_WEBHOOK_SECRET`
-- [ ] `git init` — nothing is under version control yet
+- [x] `git init` — initial commit `cd9647a`. No remote configured yet.
 
 ## Still unanswered by the vendors
 
