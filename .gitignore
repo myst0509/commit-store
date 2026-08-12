@@ -1,0 +1,22 @@
+# Secrets. Never commit these.
+.env
+.env.local
+.env.*.local
+
+# Local tool state, not shared
+.claude/settings.local.json
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.log*
+.vercel
+*.tsbuildinfo

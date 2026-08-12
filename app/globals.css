@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/*
+ * Storefront theming happens through CSS custom properties, not through
+ * per-store Tailwind builds. A store's theme is a small set of tokens read from
+ * stores.theme and injected as inline custom properties on the storefront's
+ * root element, so one compiled stylesheet serves every seller.
+ *
+ * Defaults live here; a store overrides only what it sets.
+ */
+:root {
+  --store-bg: #ffffff;
+  --store-fg: #111111;
+  --store-accent: #111111;
+  --store-muted: #6b7280;
+  --store-radius: 0.5rem;
+}
+
+body {
+  background: var(--store-bg);
+  color: var(--store-fg);
+}
