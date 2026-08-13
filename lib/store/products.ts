@@ -1,5 +1,6 @@
 import { cache } from "react";
 
+import { compareSizes } from "@/lib/size";
 import { publicClient } from "@/lib/supabase/client";
 
 /**
@@ -100,10 +101,9 @@ export const getProduct = cache(
           inStock: cv?.in_stock ?? false,
         };
       })
-      // Sorting by the catalogue's own size strings would put XS after L. Until
-      // there is a canonical size order, sort by colour then price, which at least
-      // groups a colourway together.
-      .sort((a, b) => a.color.localeCompare(b.color) || a.priceCents - b.priceCents);
+      // Colour groups the picker; size orders within it. Sorting sizes as plain
+      // strings puts XS after L, which is why compareSizes exists.
+      .sort((a, b) => a.color.localeCompare(b.color) || compareSizes(a.size, b.size));
 
     return {
       id: data.id,

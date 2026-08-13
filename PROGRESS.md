@@ -121,10 +121,14 @@ up front.
 
 | Command | |
 |---|---|
-| `npm run dev` | dev server |
+| `npm run dev` | dev server — storefront at `demo.localhost:3000` |
 | `npm run build` | production build |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm run sync:catalog` | catalog sync — `-- --categories=6,7 --limit=5 --enable` |
+| `npm test` | unit tests (`node:test` via tsx — no test framework dependency) |
+| `npm run verify:rls` | proves tenancy + money boundaries against the real database |
+| `npm run curate` | bulk enable/disable catalog blanks |
+| `npm run sync:catalog` | catalog sync — `-- --categories=6,7 --limit=5` |
+| `npm run seed:demo` | rebuild the demo store |
 
 Storefront theming is via CSS custom properties in `app/globals.css`, injected
 per-store from `stores.theme`. One compiled stylesheet serves every seller; there
@@ -175,6 +179,33 @@ lands after L).
 invalidate the resolver cache, or a seller who launches keeps seeing their own
 404 for a while. Seen in dev as a stale 404 after flipping status back to active.
 
+## Tooling — DONE
+
+Built so that the checks and bulk operations survive the session they were written
+in. All zero-dependency: tests use built-in `node:test`, scripts share `_env.ts`.
+
+**`npm test`** — 28 tests over money conversion, status mapping, dark-colour
+detection and size ordering. These pin corrections that were made against the live
+API and contradict Printful's documentation; without tests they are one
+"helpful fix" away from being reverted.
+
+**`npm run verify:rls`** — seeds two sellers with real orders, signs in as each,
+and checks isolation, money-write refusal, and the cost-basis grants. Removes
+everything it creates. Current result: **12 pass, 3 fail** — all three failures
+are migration 0002 not being applied, and they will go green when it is.
+
+**`npm run curate`** — bulk enable/disable of catalog blanks by brand, model, id,
+decoration, cost ceiling or colour count. Dry-run by default; nothing writes
+without `--apply`. `--starter` selects a defensible first catalog (DTG-printable,
+8+ colours, under $22, max 2 per brand, capped at 12). Previewed and deliberately
+**not applied** — which blanks to sell is a product decision.
+
+**Size ordering fixed.** `lib/size.ts` gives sizes a canonical order, so pickers no
+longer show XS after L. Handles the XXL/2XL duplication, numeric sizes, and keeps
+unrecognized labels visible rather than dropping them.
+
+**`PRINTFUL_WEBHOOK_SECRET` generated** — 32 random bytes, in `.env.local`.
+
 ## 4–7 — not started
 
 ---
@@ -223,8 +254,31 @@ invalidate the resolver cache, or a seller who launches keeps seeing their own
       PROJECT.md forbids. RLS gates rows, not columns; 0001 missed this.
 - [ ] Rotate the Printful token (exposed in chat during development)
 - [ ] `drop table notes;` — leftover from Supabase's starter, publicly readable
-- [ ] Generate `PRINTFUL_WEBHOOK_SECRET`
+- [x] Generate `PRINTFUL_WEBHOOK_SECRET` — done, 32 random bytes in `.env.local`
 - [x] `git init` — initial commit `cd9647a`. No remote configured yet.
+
+## Sidelined — needs a decision or a second pair of eyes
+
+Raised deliberately rather than guessed at:
+
+- **Curating the starter catalog.** `npm run curate -- --enable --starter --apply`
+  is ready and previewed (Comfort Colors 1717, Gildan 5000/64000, Bella + Canvas
+  3413, Stanley/Stella STTU169, Next Level 6210 and similar). Which blanks a brand
+  is built on is merchandising, not engineering.
+- **Cart and checkout.** Gated on a real vendor order per PROJECT.md. Building a
+  buy button before a garment has ever been manufactured is the exact failure the
+  build order exists to prevent.
+- **Cache invalidation on store activation.** A seller who flips their store live
+  may keep seeing their own 404. The fix depends on a caching strategy that has
+  not been chosen, and choosing wrong means stale storefronts platform-wide.
+- **Custom domain verification.** Needs a DNS ownership-proof design.
+- **The remaining 13 launch-path days.** Product direction, not code.
+- **All-over printing.** Still hidden. Un-hiding it means adding `all_over` to
+  `DecorationMethod` *and* the `decoration_method` enum — an interface change plus
+  a migration, on a surface with real money attached.
+- **`scripts/sync-catalog.ts` still uses raw `fetch`.** Now that
+  `@supabase/supabase-js` is installed it could use the client, but the script
+  works and rewriting a proven catalog writer for tidiness is a poor trade.
 
 ## Still unanswered by the vendors
 
