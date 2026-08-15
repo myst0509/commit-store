@@ -40,6 +40,16 @@ const anon = () => createClient(URL_, ANON, { auth: { persistSession: false } })
 
 const created = { users: [] as string[], stores: [] as string[] };
 
+/** Any enabled blank plus one of its variants, so sellers can own a product. */
+async function anyEnabledBlank() {
+  const { data: blank } = await admin
+    .from("catalog_blanks").select("id").eq("is_enabled", true).limit(1).maybeSingle();
+  if (!blank) return null;
+  const { data: cv } = await admin
+    .from("catalog_variants").select("id").eq("blank_id", blank.id).limit(1).maybeSingle();
+  return cv ? { blankId: blank.id, catalogVariantId: cv.id } : null;
+}
+
 async function seedSeller(tag: string) {
   const email = `rls-check-${tag}-${Date.now()}@example.test`;
   const password = `Verify-${crypto.randomUUID()}`;
@@ -81,7 +91,35 @@ async function seedSeller(tag: string) {
     auth: { persistSession: false },
   }).auth.signInWithPassword({ email, password });
 
-  return { storeId: store.id, orderId: order.id, token: session!.session!.access_token };
+  // A product, so the product_variants views have something to isolate.
+  let variantId: string | null = null;
+  const blank = await anyEnabledBlank();
+  if (blank) {
+    const { data: product } = await admin
+      .from("products")
+      .insert({
+        store_id: store.id, blank_id: blank.blankId,
+        name: `RLS Check ${tag}`, slug: `rls-check-${tag}-${Date.now()}`,
+        decoration: "dtg", status: "published",
+      })
+      .select("id").single();
+
+    if (product) {
+      const { data: pv } = await admin
+        .from("product_variants")
+        .insert({
+          product_id: product.id, catalog_variant_id: blank.catalogVariantId,
+          retail_price_cents: 3200, base_cost_cents: 1169, platform_fee_cents: 500,
+        })
+        .select("id").single();
+      variantId = pv?.id ?? null;
+    }
+  }
+
+  return {
+    storeId: store.id, orderId: order.id, variantId,
+    token: session!.session!.access_token,
+  };
 }
 
 async function cleanup() {
@@ -152,6 +190,58 @@ async function main() {
   const { error: catalogRead } = await anon()
     .from("catalog_variants").select("color, size, in_stock").limit(1);
   check("anon can still read colour/size", !catalogRead, catalogRead?.message ?? "");
+
+  console.log("\nselect('*') safety (migration 0003)");
+  // PostgREST answers a denial here by suggesting `GRANT SELECT ON <table> TO anon`,
+  // which would republish the cost basis. These checks make sure that hint was not
+  // followed, and that the safe alternative exists.
+  const { error: starCatalog } = await anon().from("catalog_variants").select("*").limit(1);
+  check("select('*') on catalog_variants still refused", !!starCatalog,
+    "someone ran GRANT SELECT — the cost basis is public again");
+
+  const { error: starProduct } = await sellerA.from("product_variants").select("*").limit(1);
+  check("select('*') on product_variants still refused", !!starProduct,
+    "someone ran GRANT SELECT — the base/fee split is readable again");
+
+  const { data: viewRows, error: viewErr } = await anon()
+    .from("catalog_variants_public").select("*").limit(1);
+  check("select('*') on catalog_variants_public works", !viewErr,
+    viewErr?.message ?? "has 0003 been applied?");
+  if (viewRows?.[0]) {
+    check("the view carries no cost column",
+      !("base_cost_cents" in viewRows[0]), Object.keys(viewRows[0]).join(","));
+  }
+
+  const { data: pvView, error: pvViewErr } = await sellerA
+    .from("product_variants_public").select("*").limit(1);
+  check("select('*') on product_variants_public works", !pvViewErr,
+    pvViewErr?.message ?? "has 0003 been applied?");
+  if (pvView?.[0]) {
+    check("the view carries no base/fee split",
+      !("base_cost_cents" in pvView[0]) && !("platform_fee_cents" in pvView[0]),
+      Object.keys(pvView[0]).join(","));
+    check("the view still shows seller cost", "seller_cost_cents" in pvView[0]);
+  }
+
+  // The whole point of security_invoker=on. A view defined without it runs as its
+  // owner and quietly bypasses row-level policies, which would expose every
+  // seller's variants to every other seller.
+  if (A.variantId && B.variantId) {
+    const { data: bSeesVariants, error: bViewErr } = await sellerB
+      .from("product_variants_public").select("id");
+
+    // Only meaningful if the query actually ran. Asserting "B did not see A's
+    // row" against a failed query passes for the wrong reason, which is how a
+    // security check ends up guarding nothing.
+    if (bViewErr || !Array.isArray(bSeesVariants)) {
+      check("views still enforce row isolation between sellers", false,
+        `check could not run: ${bViewErr?.message ?? "no rows returned"}`);
+    } else {
+      check("views still enforce row isolation between sellers",
+        !bSeesVariants.some((v) => v.id === A.variantId),
+        "security_invoker is off — the view bypasses RLS");
+    }
+  }
 }
 
 main()

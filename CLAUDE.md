@@ -10,6 +10,11 @@ Hard rules:
 - Every user-facing query goes through RLS. Service role is server-only.
 - Vendor submissions are idempotent on orders.idempotency_key.
 - Ask before adding a dependency.
+- Never `GRANT SELECT ON catalog_variants` or `product_variants` to anon or
+  authenticated. Those tables have deliberate column-level grants hiding our
+  vendor cost and the base/fee split. A permissions error there is the system
+  working; PostgREST's suggested fix is wrong. Use the `_public` views, or name
+  columns explicitly.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
