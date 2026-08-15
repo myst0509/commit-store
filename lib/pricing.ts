@@ -21,22 +21,34 @@ const STRIPE_PERCENT_BPS = 290; // basis points of a basis point: 2.90%
 const STRIPE_FIXED_CENTS = 30;
 
 /**
- * Platform-wide, settled 2026-08-11: the customer covers card processing via a
- * uniform service fee, so the platform fee is what we actually keep.
+ * Platform-wide, settled 2026-08-11: we absorb card processing rather than
+ * adding a service fee line at checkout. Checkout stays a clean two lines —
+ * goods and shipping — which for a brand nobody has heard of is worth more than
+ * the ~95c per order the fee would recover.
  *
- * Flip to false to absorb it instead — every consumer of computeEconomics reads
- * this, so the change is one line.
+ * The cost of this choice: our margin declines as sellers price higher, because
+ * Stripe's percentage grows with the order while our fee is flat. Across the
+ * realistic $25-40 band that is about 60c. It matters if sellers start moving
+ * $80 hoodies, at which point volume pricing with Stripe is the answer.
+ *
+ * Flip to true to pass it on — every consumer of computeEconomics reads this,
+ * so the change is one line. `npm run pricing:model` shows both.
  */
-export const PASS_CARD_FEES_TO_CUSTOMER = true;
+export const PASS_CARD_FEES_TO_CUSTOMER = false;
 
 /**
  * Our flat per-unit fee. PROJECT.md: a flat amount (~$4–6), never a percentage.
  *
- * With the service fee covering card processing, this is what we actually keep
- * per unit. Changing it changes every seller's unit cost, so it is a business
- * decision rather than a tuning knob.
+ * Set so the reference blank — a Bella + Canvas 3001 at $11.69 — lands on a
+ * seller cost of exactly $18.00. The fee is flat, so cheaper blanks cost sellers
+ * less and dearer ones more; $18.00 is the number for this shirt, not for
+ * everything.
+ *
+ * At $32 retail that leaves the seller $14.00 and us $4.52, rising to $4.94 once
+ * a resale certificate removes the vendor's sales tax. Changing it changes every
+ * seller's unit cost, so it is a business decision rather than a tuning knob.
  */
-export const PLATFORM_FEE_CENTS = 500;
+export const PLATFORM_FEE_CENTS = 631;
 
 export interface EconomicsInput {
   /** Seller's retail price for the goods, excluding shipping. */

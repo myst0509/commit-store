@@ -14,6 +14,8 @@ import path from "node:path";
 
 import { createClient } from "@supabase/supabase-js";
 
+import { PLATFORM_FEE_CENTS } from "../lib/pricing";
+
 function loadEnv() {
   const file = path.join(process.cwd(), ".env.local");
   if (!fs.existsSync(file)) return;
@@ -37,8 +39,8 @@ const DEMO_SLUG = "first-tee";
 /** Bella + Canvas 3001 — the archetypal blank for this market. */
 const BLANK_EXTERNAL_ID = "71";
 
-/** Flat per-unit platform fee, per PROJECT.md (~$4–6). */
-const PLATFORM_FEE_CENTS = 500;
+// Platform fee comes from lib/pricing so the demo matches production economics.
+
 
 const RETAIL_CENTS = 3200;
 
