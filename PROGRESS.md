@@ -243,7 +243,18 @@ unrecognized labels visible rather than dropping them.
 ## Resolved
 
 - Multiple Printful stores under one account: **works**. Store-per-seller is the
-  design; no shared-store fallback needed. (Confirmed 2026-08-11.)
+  design; no shared-store fallback needed. Confirmed by Printful support
+  2026-08-11: the Free plan allows *unlimited stores* and up to 10 "Quick Stores";
+  Growth allows unlimited of both.
+
+  > CAVEAT, unconfirmed: we use "Manual orders / API platform" stores, which
+  > should fall under *unlimited stores* rather than the Quick Store cap. If API
+  > platform stores do count as Quick Stores, the Free plan caps us at 10 sellers
+  > and the plan has to change before the pilot grows. Ask Printful to confirm
+  > which bucket an API platform store falls into.
+  >
+  > Also note the one existing store (`18599319`) is type `native`, not an API
+  > platform store. Seller stores must be created as the latter.
 - Token access level: **account-level**, verified empirically.
 
 ## Chores
