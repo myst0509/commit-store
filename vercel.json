@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/retry-fulfillments",
       "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/payouts",
+      "schedule": "0 9 * * *"
     }
   ]
 }
