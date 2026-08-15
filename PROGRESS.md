@@ -317,6 +317,9 @@ line item. **Sidelined — needs a business decision.** See "Open decisions".
       `seller_cost_cents` is. Storefront reads verified still working afterward.
       Note: `select('*')` on `catalog_variants` / `product_variants` now fails
       for anon and authenticated by design — name the columns.
+- [x] **`0004_vendor_safe_idempotency_key.sql` applied** 2026-08-11 and verified:
+      the column default now produces a 32-character key, and a 36-character
+      value is rejected by the constraint.
 - [ ] Rotate the Printful token (exposed in chat during development)
 - [x] `drop table notes;` — done, Supabase starter leftover removed
 - [x] Generate `PRINTFUL_WEBHOOK_SECRET` — done, 32 random bytes in `.env.local`
