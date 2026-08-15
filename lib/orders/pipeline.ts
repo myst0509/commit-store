@@ -1,6 +1,6 @@
 import { getProvider } from "@/lib/fulfillment";
 import { FulfillmentError, type ProviderId, type SubmitOrderInput } from "@/lib/fulfillment/types";
-import { computeEconomics, type Economics } from "@/lib/pricing";
+import { computeEconomics, PASS_CARD_FEES_TO_CUSTOMER, type Economics } from "@/lib/pricing";
 import { serviceClient } from "@/lib/supabase/client";
 
 /**
@@ -182,6 +182,7 @@ export async function submitOrderToVendor(
         vendorShippingCents: estimate.shippingCostCents,
         vendorTaxCents: estimate.taxCents,
         platformFeeCents,
+        passCardFeesToCustomer: PASS_CARD_FEES_TO_CUSTOMER,
       });
 
       return {

@@ -20,6 +20,15 @@
 const STRIPE_PERCENT_BPS = 290; // basis points of a basis point: 2.90%
 const STRIPE_FIXED_CENTS = 30;
 
+/**
+ * Platform-wide, settled 2026-08-11: the customer covers card processing via a
+ * uniform service fee, so the platform fee is what we actually keep.
+ *
+ * Flip to false to absorb it instead — every consumer of computeEconomics reads
+ * this, so the change is one line.
+ */
+export const PASS_CARD_FEES_TO_CUSTOMER = true;
+
 export interface EconomicsInput {
   /** Seller's retail price for the goods, excluding shipping. */
   itemsRetailCents: number;
@@ -33,11 +42,24 @@ export interface EconomicsInput {
   vendorTaxCents: number;
   /** Our flat per-unit fee, already multiplied by quantity. */
   platformFeeCents: number;
+  /**
+   * When true, a service fee line is added so the customer covers card
+   * processing and we keep the full platform fee.
+   *
+   * NOTE: this must be a uniform service fee applied to every order regardless
+   * of payment method — not a card surcharge. Several US states restrict
+   * surcharging, and the card networks prohibit surcharging debit entirely.
+   */
+  passCardFeesToCustomer?: boolean;
 }
 
 export interface Economics {
-  /** What the customer's card is charged. */
+  /** What the customer's card is charged, service fee included. */
   customerPaysCents: number;
+  /** Goods plus shipping, before any service fee. */
+  subtotalCents: number;
+  /** The service fee line. Zero unless passCardFeesToCustomer is set. */
+  serviceFeeCents: number;
   /** Total vendor invoice. */
   vendorTotalCents: number;
   /** Owed to the seller, net 14 after delivery. */
@@ -56,6 +78,26 @@ export function stripeFee(grossCents: number): number {
 }
 
 /**
+ * The amount to charge so that, after Stripe takes its cut, exactly
+ * `targetNetCents` lands.
+ *
+ * Not simply `target + fee`: Stripe's percentage applies to the whole charge
+ * including the part added to cover Stripe, so the fee grows with the amount.
+ * Solving charge − (charge × rate + fixed) = target gives:
+ *
+ *     charge = (target + fixed) / (1 − rate)
+ *
+ * Rounded UP. Rounding down would leave us a cent short on some orders, and
+ * being a cent short on every order is a slow leak nobody notices.
+ */
+export function grossUpForStripe(targetNetCents: number): number {
+  if (targetNetCents <= 0) return 0;
+  const numerator = (targetNetCents + STRIPE_FIXED_CENTS) * 10_000;
+  const denominator = 10_000 - STRIPE_PERCENT_BPS;
+  return Math.ceil(numerator / denominator);
+}
+
+/**
  * Seller-visible unit cost. The split behind it is never shown — see 0002.
  */
 export function sellerUnitCost(vendorBaseCents: number, feeCents: number): number {
@@ -63,7 +105,6 @@ export function sellerUnitCost(vendorBaseCents: number, feeCents: number): numbe
 }
 
 export function computeEconomics(input: EconomicsInput): Economics {
-  const customerPaysCents = input.itemsRetailCents + input.shippingChargedCents;
   const vendorTotalCents =
     input.vendorItemsCents + input.vendorShippingCents + input.vendorTaxCents;
 
@@ -72,6 +113,18 @@ export function computeEconomics(input: EconomicsInput): Economics {
   const sellerMarginCents =
     input.itemsRetailCents - input.vendorItemsCents - input.platformFeeCents;
 
+  const subtotalCents = input.itemsRetailCents + input.shippingChargedCents;
+
+  let customerPaysCents = subtotalCents;
+  let serviceFeeCents = 0;
+
+  if (input.passCardFeesToCustomer) {
+    // Everything that has to leave our account, plus the fee we intend to keep.
+    const requiredNet = vendorTotalCents + sellerMarginCents + input.platformFeeCents;
+    customerPaysCents = grossUpForStripe(requiredNet);
+    serviceFeeCents = customerPaysCents - subtotalCents;
+  }
+
   const stripeFeeCents = stripeFee(customerPaysCents);
 
   const platformNetCents =
@@ -79,6 +132,8 @@ export function computeEconomics(input: EconomicsInput): Economics {
 
   return {
     customerPaysCents,
+    subtotalCents,
+    serviceFeeCents,
     vendorTotalCents,
     sellerMarginCents,
     stripeFeeCents,

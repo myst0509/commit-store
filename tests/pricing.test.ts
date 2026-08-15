@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { computeEconomics, sellerUnitCost, stripeFee } from "../lib/pricing";
+import { computeEconomics, grossUpForStripe, sellerUnitCost, stripeFee } from "../lib/pricing";
 
 /**
  * Real numbers throughout: a Bella + Canvas 3001 at $11.69 base, $4.75 shipping
@@ -63,6 +63,67 @@ describe("computeEconomics — customer pays shipping", () => {
 
   it("stays profitable", () => {
     assert.ok(economics.platformNetCents > 0);
+  });
+});
+
+describe("grossUpForStripe", () => {
+  it("charges enough that the target actually lands", () => {
+    for (const target of [1000, 3717, 5000, 12345, 99999]) {
+      const charge = grossUpForStripe(target);
+      const landed = charge - stripeFee(charge);
+      assert.ok(landed >= target, `target ${target}: landed ${landed}`);
+    }
+  });
+
+  it("never overshoots by more than a cent", () => {
+    for (const target of [1000, 3717, 5000, 12345, 99999]) {
+      const charge = grossUpForStripe(target);
+      const landed = charge - stripeFee(charge);
+      assert.ok(landed - target <= 1, `target ${target}: overshot to ${landed}`);
+    }
+  });
+
+  it("is more than target plus a naive fee, because Stripe taxes its own fee", () => {
+    const target = 3717;
+    const naive = target + stripeFee(target);
+    assert.ok(grossUpForStripe(target) > naive - 5);
+  });
+});
+
+describe("computeEconomics — customer covers card fees", () => {
+  const e = computeEconomics({
+    itemsRetailCents: 3200,
+    shippingChargedCents: 475,
+    platformFeeCents: 500,
+    passCardFeesToCustomer: true,
+    ...REAL,
+  });
+
+  it("adds a service fee line on top of goods and shipping", () => {
+    assert.equal(e.subtotalCents, 3675);
+    assert.ok(e.serviceFeeCents > 0);
+    assert.equal(e.customerPaysCents, e.subtotalCents + e.serviceFeeCents);
+  });
+
+  it("leaves us the full platform fee", () => {
+    // The whole point: gross fee and net are now the same.
+    assert.equal(e.platformNetCents, e.platformGrossFeeCents);
+  });
+
+  it("does not change what the seller earns", () => {
+    const absorbed = computeEconomics({
+      itemsRetailCents: 3200, shippingChargedCents: 475, platformFeeCents: 500, ...REAL,
+    });
+    assert.equal(e.sellerMarginCents, absorbed.sellerMarginCents);
+  });
+
+  it("costs the customer more than the card fee alone, and that is correct", () => {
+    // Stripe's percentage applies to the service fee too, so covering a $1.37
+    // fee costs the customer slightly more than $1.37.
+    const absorbed = computeEconomics({
+      itemsRetailCents: 3200, shippingChargedCents: 475, platformFeeCents: 500, ...REAL,
+    });
+    assert.ok(e.serviceFeeCents > absorbed.stripeFeeCents);
   });
 });
 

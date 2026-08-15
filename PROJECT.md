@@ -34,9 +34,24 @@ happens to cost on any given order.
 - **Vendor sales tax**, unless we hold a resale certificate with the vendor — worth doing early,
   it is pure recovered margin.
 
-On a real Bella + Canvas 3001 order priced at $32 with a $5 fee, a $5.00 gross fee nets **$3.21**.
-At a $3.31 fee — the number that makes seller cost a round $15 — it nets **$1.52**. Model the fee
-against net, never gross: see `lib/pricing.ts`, which is the only place this arithmetic lives.
+**Service fee (settled 2026-08-11).** Rather than absorb those costs, the customer covers them via
+a **service fee** line at checkout, so our platform fee is what we actually keep. On the reference
+order that fee is $1.84 — $1.42 Stripe plus $0.42 vendor tax — and a $5.00 platform fee nets the
+full $5.00.
+
+Two things about that number:
+
+- Stripe charges its percentage on the service fee itself, so covering a $1.37 cost requires
+  charging $1.42. `grossUpForStripe` solves for it; do not just add the fee.
+- A resale certificate with Printful removes the $0.42, which lowers the customer's fee rather
+  than raising our margin.
+
+It must be a **uniform service fee on every order regardless of payment method**, not a card
+surcharge: several US states restrict surcharging and the card networks prohibit it on debit.
+Worth legal review before launch — we are merchant of record, so it is our exposure.
+
+All of this lives in `lib/pricing.ts`, the only place the arithmetic exists. `PASS_CARD_FEES_TO_CUSTOMER`
+flips the whole model in one line if the fee hurts conversion.
 
 Implications you must respect:
 - Sellers never hold vendor API credentials. We do.

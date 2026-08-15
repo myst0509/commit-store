@@ -112,8 +112,11 @@ async function main() {
     const e = result.economics!;
 
     console.log("What the customer is charged");
-    console.log(`    Goods (seller's price)     ${usd(e.customerPaysCents - e.vendorShippingCents)}`);
+    console.log(`    Goods (seller's price)     ${usd(e.subtotalCents - e.vendorShippingCents)}`);
     console.log(`    Shipping                   ${usd(e.vendorShippingCents)}   passed through at cost`);
+    if (e.serviceFeeCents > 0) {
+      console.log(`    Service fee                ${usd(e.serviceFeeCents)}   card processing + vendor tax`);
+    }
     console.log(`                               ─────────`);
     console.log(`    Total                      ${usd(e.customerPaysCents)}`);
 
