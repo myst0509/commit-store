@@ -19,7 +19,8 @@
     "checkout:test": "tsx scripts/checkout-test.ts",
     "webhook:test": "tsx scripts/webhook-test.ts",
     "retry:test": "tsx scripts/retry-test.ts",
-    "payout:test": "tsx scripts/payout-test.ts"
+    "payout:test": "tsx scripts/payout-test.ts",
+    "drop:test": "tsx scripts/drop-test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
