@@ -22,6 +22,22 @@ import { serviceClient } from "@/lib/supabase/client";
 
 const NET_DAYS = 14;
 
+/**
+ * Vendor submission is off unless explicitly enabled.
+ *
+ * Printful has no sandbox. A submitted order is a real garment, really printed,
+ * really charged to us — there is no test mode to fall back on the way Stripe
+ * has one. That asymmetry is dangerous: a test that exercises the payment path
+ * end to end would, without this, quietly place a real order.
+ *
+ * Set FULFILLMENT_LIVE=true in the environment that is meant to manufacture
+ * things. Everywhere else, submissions are recorded as blocked and nothing is
+ * sent. Dry runs are unaffected — they only ever price.
+ */
+function fulfillmentIsLive(): boolean {
+  return process.env.FULFILLMENT_LIVE === "true";
+}
+
 export interface SubmitResult {
   ok: boolean;
   dryRun: boolean;
@@ -196,6 +212,31 @@ export async function submitOrderToVendor(
           ...economics,
           vendorShippingCents: estimate.shippingCostCents,
           vendorTaxCents: estimate.taxCents,
+        },
+      };
+    }
+
+    if (!fulfillmentIsLive()) {
+      // Recorded, not sent. The order sits visibly in a "would have been
+      // submitted" state rather than silently doing nothing.
+      await recordFulfillment(orderId, providerId, {
+        status: "pending",
+        raw_status: "blocked_fulfillment_not_live",
+        last_error: {
+          kind: "blocked",
+          message: "FULFILLMENT_LIVE is not true; vendor submission was skipped",
+        },
+        next_retry_at: null,
+      });
+
+      return {
+        ...base,
+        status: "blocked",
+        error: {
+          kind: "blocked",
+          message:
+            "Vendor submission is disabled. Set FULFILLMENT_LIVE=true to place real orders.",
+          retryable: false,
         },
       };
     }

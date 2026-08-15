@@ -16,7 +16,8 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "launch:walkthrough": "tsx scripts/launch-walkthrough.ts",
     "pricing:model": "tsx scripts/pricing-model.ts",
-    "checkout:test": "tsx scripts/checkout-test.ts"
+    "checkout:test": "tsx scripts/checkout-test.ts",
+    "webhook:test": "tsx scripts/webhook-test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
