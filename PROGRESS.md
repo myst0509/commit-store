@@ -191,8 +191,9 @@ API and contradict Printful's documentation; without tests they are one
 
 **`npm run verify:rls`** — seeds two sellers with real orders, signs in as each,
 and checks isolation, money-write refusal, and the cost-basis grants. Removes
-everything it creates. Current result: **12 pass, 3 fail** — all three failures
-are migration 0002 not being applied, and they will go green when it is.
+everything it creates. Current result: **15 pass, 0 fail** (verified after 0002
+was applied on 2026-08-11). Re-run it after any migration touching policies or
+grants.
 
 **`npm run curate`** — bulk enable/disable of catalog blanks by brand, model, id,
 decoration, cost ceiling or colour count. Dry-run by default; nothing writes
@@ -247,13 +248,13 @@ unrecognized labels visible rather than dropping them.
 
 ## Chores
 
-- [ ] **Run `0002_hide_cost_basis.sql`.** Until it is applied, anonymous
-      storefront visitors can read `catalog_variants.base_cost_cents` — the
-      platform's vendor cost basis — with the publishable key that ships in
-      every browser bundle. Sellers can also read the base/fee split, which
-      PROJECT.md forbids. RLS gates rows, not columns; 0001 missed this.
+- [x] **`0002_hide_cost_basis.sql` applied** 2026-08-11. Vendor cost is no longer
+      readable by anon; the base/fee split is no longer readable by sellers;
+      `seller_cost_cents` is. Storefront reads verified still working afterward.
+      Note: `select('*')` on `catalog_variants` / `product_variants` now fails
+      for anon and authenticated by design — name the columns.
 - [ ] Rotate the Printful token (exposed in chat during development)
-- [ ] `drop table notes;` — leftover from Supabase's starter, publicly readable
+- [x] `drop table notes;` — done, Supabase starter leftover removed
 - [x] Generate `PRINTFUL_WEBHOOK_SECRET` — done, 32 random bytes in `.env.local`
 - [x] `git init` — initial commit `cd9647a`. No remote configured yet.
 
