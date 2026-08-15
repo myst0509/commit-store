@@ -3,7 +3,12 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-11
+**Last updated:** 2026-08-11 · 21 commits · 83 unit tests + 50 integration checks
+
+The money path is complete in code and verified against Stripe test mode:
+reserve → threshold → capture → produce → deliver → ledger → payout, with
+retries for the vendor gap and hold-releases for drops that fall short.
+**No real garment has ever been made and no live charge has been taken.**
 
 Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` not started · `BLOCKED` waiting on something
 
@@ -21,7 +26,7 @@ Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` n
 | 4 | Design upload + mockup compositing | TODO |
 | 5 | Stripe Connect + checkout + order pipeline | **PARTIAL** — checkout + webhook done; no Connect/payouts |
 | 6 | Launch path | **PARTIAL** — engine done, 8 of 21 steps defined |
-| 7 | Drops and reservations | TODO |
+| 7 | Drops and reservations | **PARTIAL** — resolution done and verified; no seller UI |
 
 The original "no step 5 before a real order" gate was superseded 2026-08-11 — see
 PROJECT.md. The gate is now: **no real customer payment until a garment has been
@@ -130,6 +135,14 @@ up front.
 | `npm run curate` | bulk enable/disable catalog blanks |
 | `npm run sync:catalog` | catalog sync — `-- --categories=6,7 --limit=5` |
 | `npm run seed:demo` | rebuild the demo store |
+| `npm run order:dry-run` | price a real order through Printful, nothing created |
+| `npm run pricing:model` | compare pricing models across seller prices |
+| `npm run checkout:test` | full checkout with a Stripe test card |
+| `npm run webhook:test` | 15 checks against the running webhook route |
+| `npm run retry:test` | recovery of orders paid but never submitted |
+| `npm run payout:test` | Connect onboarding and the payout run |
+| `npm run drop:test` | reservations, capture at threshold, release when short |
+| `npm run launch:walkthrough` | drives all 8 launch steps end to end |
 
 Storefront theming is via CSS custom properties in `app/globals.css`, injected
 per-store from `stores.theme`. One compiled stylesheet serves every seller; there
@@ -279,7 +292,75 @@ payment path end to end would place a real order. Flip it deliberately, once.
 certificate (worth 42c/order) and the merchant-of-record question. Both known,
 both the user's to action on their own timeline.
 
-## 4, 7 — not started
+## 5b. Payouts — PARTIAL
+
+`lib/payouts/` — Connect Express onboarding and the payout run.
+`npm run payout:test` (11 checks).
+
+**The ordering is the safety argument.** Record the payout → CLAIM the ledger
+entries by stamping `payout_id` → only then create the Transfer. A crash mid-run
+leaves money unsent, which is recoverable; transfer-first-record-after leaves
+money sent and unrecorded, which pays twice on the next run and cannot be undone.
+Claiming filters on `payout_id is null`, so a concurrent run cannot pay for
+entries it does not own.
+
+**A failed transfer releases the claim.** Verified. Without it a transient Stripe
+error would strand a seller's earnings permanently with nothing marked wrong.
+
+Guards verified: payouts held on a disputed store; incomplete onboarding;
+balances under the $10 minimum rolling forward; negative balances after clawback.
+
+Express accounts, not Standard — Stripe hosts identity and bank collection so we
+never touch either. `transfers` capability only; every charge belongs to the
+platform account.
+
+**Not verified: onboarding and a successful transfer.** Connect is not enabled on
+the Stripe account (`dashboard.stripe.com/connect`). The test reports this as a
+skip rather than a pass it did not earn.
+
+Noted for later: Stripe's SDK now recommends Accounts v2 for new Connect
+integrations. v1 is what is built and works; migrate deliberately.
+
+## 5c. Retry worker — DONE
+
+`lib/orders/retry.ts` + `/api/cron/retry-fulfillments`, every 10 minutes.
+`npm run retry:test` (10 checks).
+
+Sweeps two failure shapes. The obvious one is a vendor call that failed and left
+a retry time. The dangerous one is a **paid order with no fulfillment row at
+all** — the webhook died between recording payment and attempting submission, so
+nothing anywhere is marked broken.
+
+Backoff 10m → 30m → 2h → 6h → 24h, front-loaded because most failures are
+transient and a customer is waiting. `auth` and `validation` escalate at once;
+they fail identically forever.
+
+The decision is a **pure function** (`decideRetry`) with its own unit tests,
+because `FULFILLMENT_LIVE` is false in every environment safe to test in — an
+end-to-end sweep short-circuits to "blocked" before backoff is ever reached.
+
+## 7. Drops and reservations — PARTIAL
+
+`lib/drops/resolve.ts` + `/api/cron/resolve-drops`, hourly.
+`npm run drop:test` (14 checks, real Stripe test mode).
+
+**"Auto-refund below threshold" is two different operations.** A reservation that
+never met threshold was AUTHORISED, not charged — cancelling releases the hold,
+so nothing appears on the customer's statement. A refund means they were charged,
+saw it, and wait days for it back. For someone buying from an unknown brand that
+is the difference between "nothing happened" and "that was sketchy". The code
+cancels; it only refunds an order somehow already captured.
+
+Captures as soon as the threshold is met rather than waiting for `closes_at` —
+Stripe authorisations lapse after about a week.
+
+A declined card at capture cancels that one order rather than aborting the drop.
+A vendor submission failure likewise does not abort the loop; the retry sweep
+owns it.
+
+Not built: any seller or storefront UI for drops.
+
+## 4 — not started
 
 ---
 
@@ -339,6 +420,19 @@ both the user's to action on their own timeline.
   > platform store. Seller stores must be created as the latter.
 - Token access level: **account-level**, verified empirically.
 
+## Deployment — not started
+
+Nothing is deployed. The app runs only via `npm run dev`, and **the crons in
+`vercel.json` do nothing until it is.** When deploying:
+
+1. A GitHub repo — 21 local commits, no remote configured.
+2. A Vercel project pointed at it.
+3. **Every secret re-entered** in Vercel → Settings → Environment Variables.
+   `.env.local` is gitignored and Vercel never sees it. `CRON_SECRET` in
+   particular: without it the scheduled routes return 503 and silently never run.
+4. Wildcard DNS for `*.ourdomain.com`, plus custom-domain handling.
+5. `FULFILLMENT_LIVE` stays **false** until a real garment has been made.
+
 ## Chores
 
 - [x] **`0002_hide_cost_basis.sql` applied** 2026-08-11. Vendor cost is no longer
@@ -353,6 +447,16 @@ both the user's to action on their own timeline.
 - [x] `drop table notes;` — done, Supabase starter leftover removed
 - [x] Generate `PRINTFUL_WEBHOOK_SECRET` — done, 32 random bytes in `.env.local`
 - [x] `git init` — initial commit `cd9647a`. No remote configured yet.
+
+## Waiting on the user — do NOT raise these as reminders
+
+Acknowledged and deliberately deferred. Record status if asked; do not prompt.
+
+- **Printful resale certificate.** Worth ~42c per order. Takes time to file.
+- **Merchant-of-record question with Printful.** The largest unhedged
+  assumption in the project, and the user is aware of it.
+- **Enable Connect** at `dashboard.stripe.com/connect` — blocks payout testing.
+- **The first real Printful order** — blocks live charges.
 
 ## Sidelined — needs a decision or a second pair of eyes
 
