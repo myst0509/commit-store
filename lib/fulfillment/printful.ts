@@ -90,9 +90,10 @@ export class PrintfulProvider implements FulfillmentProvider {
   private catalogStore: string | null = null;
 
   /**
-   * Some catalog endpoints are store-scoped even though their data is global —
-   * /mockup-generator/printfiles is the one that matters, and an account-level token
-   * gets `400 This endpoint requires store_id!` without the header.
+   * Several endpoints are store-scoped even though their data is not tied to any
+   * one store — /mockup-generator/printfiles and /shipping/rates both are, and an
+   * account-level token gets `400 This endpoint requires store_id!` without the
+   * header. Used wherever a call needs *a* store rather than a seller's store.
    *
    * Any store on the account returns the same print areas, so this resolves one and
    * caches it. Set PRINTFUL_CATALOG_STORE_ID to pin it; otherwise the first store on
@@ -470,7 +471,11 @@ export class PrintfulProvider implements FulfillmentProvider {
     items: Array<{ externalVariantId: string; quantity: number }>;
     shipping: ShippingAddress;
   }): Promise<ShippingQuote[]> {
+    // Store-scoped, like the catalog endpoints, even though rates depend only on
+    // the basket and destination. Any store on the account returns the same
+    // answer; an account-level token just has to name one.
     const rates = await this.call<PfShippingRate[]>("POST", "/shipping/rates", {
+      storeId: await this.catalogStoreId(),
       body: {
         recipient: toRecipient(input.shipping),
         items: input.items.map((i) => ({

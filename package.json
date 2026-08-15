@@ -15,7 +15,8 @@
     "sync:catalog": "tsx scripts/sync-catalog.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "launch:walkthrough": "tsx scripts/launch-walkthrough.ts",
-    "pricing:model": "tsx scripts/pricing-model.ts"
+    "pricing:model": "tsx scripts/pricing-model.ts",
+    "checkout:test": "tsx scripts/checkout-test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
