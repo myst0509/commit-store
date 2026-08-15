@@ -100,7 +100,11 @@ async function seedSeller(tag: string) {
       .insert({
         store_id: store.id, blank_id: blank.blankId,
         name: `RLS Check ${tag}`, slug: `rls-check-${tag}-${Date.now()}`,
-        decoration: "dtg", status: "published",
+        decoration: "dtg",
+        // DRAFT on purpose. A published product on an active store is meant to
+        // be world-readable — that is what a storefront is — so isolation can
+        // only be tested against something not yet published.
+        status: "draft",
       })
       .select("id").single();
 
@@ -223,23 +227,31 @@ async function main() {
     check("the view still shows seller cost", "seller_cost_cents" in pvView[0]);
   }
 
-  // The whole point of security_invoker=on. A view defined without it runs as its
-  // owner and quietly bypasses row-level policies, which would expose every
-  // seller's variants to every other seller.
+  // The whole point of security_invoker=on. A view declared without it runs with
+  // its OWNER's privileges and silently bypasses row-level policies, exposing
+  // every seller's unpublished work to every other seller.
+  //
+  // Tested against DRAFT products. Published variants on an active store are
+  // public by design, so they prove nothing about isolation.
   if (A.variantId && B.variantId) {
-    const { data: bSeesVariants, error: bViewErr } = await sellerB
+    const { data: bSees, error: bErr } = await sellerB
+      .from("product_variants_public").select("id");
+    const { data: aSeesOwn, error: aErr } = await sellerA
       .from("product_variants_public").select("id");
 
-    // Only meaningful if the query actually ran. Asserting "B did not see A's
+    // Only meaningful if the queries actually ran. Asserting "B did not see A's
     // row" against a failed query passes for the wrong reason, which is how a
     // security check ends up guarding nothing.
-    if (bViewErr || !Array.isArray(bSeesVariants)) {
-      check("views still enforce row isolation between sellers", false,
-        `check could not run: ${bViewErr?.message ?? "no rows returned"}`);
+    if (bErr || aErr || !Array.isArray(bSees) || !Array.isArray(aSeesOwn)) {
+      check("views enforce row isolation between sellers", false,
+        `check could not run: ${(bErr ?? aErr)?.message ?? "no rows returned"}`);
     } else {
-      check("views still enforce row isolation between sellers",
-        !bSeesVariants.some((v) => v.id === A.variantId),
+      check("seller B cannot see seller A's unpublished variant",
+        !bSees.some((v) => v.id === A.variantId),
         "security_invoker is off — the view bypasses RLS");
+      check("seller A can see their own unpublished variant",
+        aSeesOwn.some((v) => v.id === A.variantId),
+        "the owner policy is not reaching through the view");
     }
   }
 }
