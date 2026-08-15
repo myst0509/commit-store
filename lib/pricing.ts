@@ -52,6 +52,17 @@ export interface EconomicsInput {
   /** Our flat per-unit fee, already multiplied by quantity. */
   platformFeeCents: number;
   /**
+   * What the seller was told a unit costs them, already multiplied by quantity.
+   *
+   * Supply this whenever the seller-facing cost includes anything beyond
+   * `vendorItems + fee` — vendor tax, for instance. Margin is then
+   * `retail − sellerUnitCost`, which is what the seller was shown, so the number
+   * on their dashboard and the number credited to their ledger cannot diverge.
+   *
+   * Omit it and margin falls back to `retail − vendorItems − fee`.
+   */
+  sellerUnitCostCents?: number;
+  /**
    * When true, a service fee line is added so the customer covers card
    * processing and we keep the full platform fee.
    *
@@ -119,8 +130,14 @@ export function computeEconomics(input: EconomicsInput): Economics {
 
   // The seller's margin is on the goods only. Shipping is not theirs to profit
   // from, and not theirs to lose on either.
+  //
+  // Derived from the cost they were quoted when one is given. A seller shown
+  // "$18.00 per unit" must earn exactly retail − $18.00; computing it from parts
+  // instead lets the displayed figure drift from the credited one.
   const sellerMarginCents =
-    input.itemsRetailCents - input.vendorItemsCents - input.platformFeeCents;
+    input.sellerUnitCostCents !== undefined
+      ? input.itemsRetailCents - input.sellerUnitCostCents
+      : input.itemsRetailCents - input.vendorItemsCents - input.platformFeeCents;
 
   const subtotalCents = input.itemsRetailCents + input.shippingChargedCents;
 

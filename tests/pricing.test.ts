@@ -191,3 +191,41 @@ describe("computeEconomics — the failure modes worth knowing about", () => {
     }
   });
 });
+
+describe("computeEconomics — seller margin matches the quoted cost", () => {
+  it("earns retail minus the cost the seller was shown", () => {
+    // Seller told $18.00/unit, which includes blank + vendor tax + our fee.
+    const e = computeEconomics({
+      itemsRetailCents: 3200,
+      shippingChargedCents: 475,
+      platformFeeCents: 589,
+      sellerUnitCostCents: 1800,
+      ...REAL,
+    });
+    assert.equal(e.sellerMarginCents, 1400, "must equal 32.00 - 18.00 exactly");
+  });
+
+  it("would drift from the quoted figure without it", () => {
+    // Same inputs, no quoted cost: margin is computed from parts and ignores
+    // the tax baked into the seller's price. This is the bug the field fixes.
+    const derived = computeEconomics({
+      itemsRetailCents: 3200, shippingChargedCents: 475, platformFeeCents: 589, ...REAL,
+    });
+    assert.equal(derived.sellerMarginCents, 1442);
+    assert.notEqual(derived.sellerMarginCents, 1400);
+  });
+
+  it("keeps the platform whole either way — the difference lands on us", () => {
+    const quoted = computeEconomics({
+      itemsRetailCents: 3200, shippingChargedCents: 475, platformFeeCents: 589,
+      sellerUnitCostCents: 1800, ...REAL,
+    });
+    const derived = computeEconomics({
+      itemsRetailCents: 3200, shippingChargedCents: 475, platformFeeCents: 589, ...REAL,
+    });
+    assert.equal(
+      quoted.platformNetCents - derived.platformNetCents,
+      derived.sellerMarginCents - quoted.sellerMarginCents,
+    );
+  });
+});
