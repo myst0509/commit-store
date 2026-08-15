@@ -29,6 +29,15 @@ const STRIPE_FIXED_CENTS = 30;
  */
 export const PASS_CARD_FEES_TO_CUSTOMER = true;
 
+/**
+ * Our flat per-unit fee. PROJECT.md: a flat amount (~$4–6), never a percentage.
+ *
+ * With the service fee covering card processing, this is what we actually keep
+ * per unit. Changing it changes every seller's unit cost, so it is a business
+ * decision rather than a tuning knob.
+ */
+export const PLATFORM_FEE_CENTS = 500;
+
 export interface EconomicsInput {
   /** Seller's retail price for the goods, excluding shipping. */
   itemsRetailCents: number;
