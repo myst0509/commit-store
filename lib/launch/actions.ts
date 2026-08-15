@@ -1,5 +1,13 @@
+import {
+  inspectArtwork, validateAgainstPlacement, type PlacementSpec,
+} from "@/lib/design/validate";
 import { PLATFORM_FEE_CENTS } from "@/lib/pricing";
 import { serviceClient } from "@/lib/supabase/client";
+
+/** A standard adult front print. Used before a blank has been chosen. */
+const REFERENCE_FRONT: PlacementSpec = {
+  code: "front", widthIn: 12, heightIn: 16, minDpi: 150,
+};
 
 import {
   resolveSteps, STEP_BY_KEY, type StepKey, type StepState,
@@ -94,6 +102,24 @@ const HANDLERS: Record<string, Handler> = {
 
     if (!publicUrl || !storagePath) throw new Error("Upload the file before recording it");
 
+    // Inspect the real bytes rather than trusting whatever the client reported.
+    // A blank has not been chosen yet at this point in the sequence, so this
+    // checks against a standard front print (12″ × 16″ at 150 DPI) — enough to
+    // catch artwork that is unusable everywhere. Exact per-placement checks
+    // happen once a blank is picked.
+    let facts;
+    try {
+      const res = await fetch(String(publicUrl));
+      if (!res.ok) throw new Error(`could not read the uploaded file (HTTP ${res.status})`);
+      facts = await inspectArtwork(Buffer.from(await res.arrayBuffer()));
+    } catch (e) {
+      throw new Error(`Could not read that image: ${e instanceof Error ? e.message : e}`);
+    }
+
+    const check = validateAgainstPlacement(facts, REFERENCE_FRONT);
+    const blocking = check.findings.filter((f) => f.code === "far_too_small");
+    if (blocking.length) throw new Error(blocking[0].message);
+
     // No unique constraint on (store_id, storage_path), so upsert cannot be used.
     // Checked explicitly instead, which keeps a double-clicked button from
     // creating two design rows for one file.
@@ -110,15 +136,24 @@ const HANDLERS: Record<string, Handler> = {
         filename: String(filename ?? "design"),
         storage_path: String(storagePath),
         public_url: String(publicUrl),
-        width_px: widthPx ? Number(widthPx) : null,
-        height_px: heightPx ? Number(heightPx) : null,
+        // Measured, not reported. widthPx/heightPx from the client are ignored.
+        width_px: facts.widthPx,
+        height_px: facts.heightPx,
+        byte_size: facts.byteSize,
         review_status: "pending",
       })
       .select("id")
       .single();
 
     if (error) throw error;
-    return { designId: data.id, reviewStatus: "pending" };
+
+    return {
+      designId: data.id,
+      reviewStatus: "pending",
+      dimensions: `${facts.widthPx}×${facts.heightPx}`,
+      maxPrintSize: `${check.maxPrintInches.width}″ × ${check.maxPrintInches.height}″`,
+      warnings: check.findings.filter((f) => f.severity === "warning").map((f) => f.message),
+    };
   },
 
   /** Day 5. Records the chosen blank; the product itself is created at pricing. */

@@ -9,9 +9,11 @@
  * is worth being able to watch it run. Everything created is removed at the end.
  */
 
+import sharp from "sharp";
+
 import { getLaunchState, performStep } from "../lib/launch/actions";
 import type { StepKey } from "../lib/launch/steps";
-import { adminClient, args, loadEnv } from "./_env";
+import { adminClient, args, deleteStoreCompletely, loadEnv } from "./_env";
 
 loadEnv();
 const sb = adminClient();
@@ -76,13 +78,44 @@ async function main() {
     console.log(`Guard   ${e instanceof Error ? e.message : e}\n`);
   }
 
-  await step("name", { name: "Union Made" });
+  await step("name", { name: `Union Made ${Date.now().toString(36).slice(-4)}` });
+
+  // A real upload to the artwork bucket, so the design step reads real bytes.
+  // Artwork must live at a stable public URL because vendors fetch by URL.
+  const artwork = await sharp({
+    create: { width: 2400, height: 3000, channels: 4, background: { r: 18, g: 22, b: 34, alpha: 1 } },
+  }).png().toBuffer();
+
+  const storagePath = `${created.storeId}/logo.png`;
+  const { error: upErr } = await sb.storage
+    .from("artwork").upload(storagePath, artwork, { contentType: "image/png", upsert: true });
+  if (upErr) throw upErr;
+
+  const { data: pub } = sb.storage.from("artwork").getPublicUrl(storagePath);
+
+  // Too small on purpose — the step should refuse it before anything is recorded.
+  const tiny = await sharp({
+    create: { width: 120, height: 120, channels: 4, background: { r: 200, g: 0, b: 0, alpha: 1 } },
+  }).png().toBuffer();
+  await sb.storage.from("artwork")
+    .upload(`${created.storeId}/tiny.png`, tiny, { contentType: "image/png", upsert: true });
+  const { data: tinyPub } = sb.storage.from("artwork").getPublicUrl(`${created.storeId}/tiny.png`);
+
+  try {
+    await performStep(created.storeId, "design", {
+      filename: "tiny.png",
+      storagePath: `${created.storeId}/tiny.png`,
+      publicUrl: tinyPub.publicUrl,
+    });
+    console.log("  !! unprintable artwork was accepted\n");
+  } catch (e) {
+    console.log(`Guard   ${e instanceof Error ? e.message : e}\n`);
+  }
 
   await step("design", {
     filename: "logo.png",
-    storagePath: `${created.storeId}/logo.png`,
-    publicUrl: "https://example.test/logo.png",
-    widthPx: 4500, heightPx: 5400,
+    storagePath,
+    publicUrl: pub.publicUrl,
   });
 
   const { data: blank } = await sb
@@ -149,7 +182,18 @@ main()
       console.log(`\n(kept: store ${created.storeId})`);
       return;
     }
-    if (created.storeId) await sb.from("stores").delete().eq("id", created.storeId);
-    if (created.userId) await sb.auth.admin.deleteUser(created.userId);
-    console.log("\n(walkthrough store removed)");
+    try {
+      if (created.storeId) {
+        await sb.storage.from("artwork").remove([
+          `${created.storeId}/logo.png`, `${created.storeId}/tiny.png`,
+        ]);
+        await deleteStoreCompletely(sb, created.storeId);
+      }
+      if (created.userId) await sb.auth.admin.deleteUser(created.userId);
+      console.log("\n(walkthrough store removed)");
+    } catch (e) {
+      console.error(`\nCLEANUP FAILED — ${e instanceof Error ? e.message : e}`);
+      console.error(`Store ${created.storeId} is still present.`);
+      process.exitCode = 1;
+    }
   });

@@ -39,6 +39,49 @@ export function adminClient(): SupabaseClient {
   );
 }
 
+/**
+ * Deletes a store and everything under it, in dependency order.
+ *
+ * A plain `delete from stores` FAILS. The cascade reaches `designs`, but
+ * `product_artwork.design_id` is ON DELETE RESTRICT — deliberately, so a seller
+ * cannot delete a design that is live on a product. Postgres has no way to know
+ * the artwork rows are about to be cascaded away too.
+ *
+ * So products go first (taking their artwork and variants with them), then
+ * designs, then the store.
+ *
+ * NOTE: this refuses to run if the store has orders. Order history is financial
+ * record — account closure has to anonymise it, not erase it, and that is a
+ * different operation than this.
+ */
+export async function deleteStoreCompletely(
+  sb: SupabaseClient,
+  storeId: string,
+): Promise<void> {
+  const { count } = await sb
+    .from("orders").select("id", { count: "exact", head: true }).eq("store_id", storeId);
+
+  if (count) {
+    throw new Error(
+      `Store ${storeId} has ${count} order(s); refusing to delete financial records`,
+    );
+  }
+
+  const steps: Array<[string, () => PromiseLike<{ error: unknown }>]> = [
+    ["products", () => sb.from("products").delete().eq("store_id", storeId)],
+    ["designs", () => sb.from("designs").delete().eq("store_id", storeId)],
+    ["drops", () => sb.from("drops").delete().eq("store_id", storeId)],
+    ["stores", () => sb.from("stores").delete().eq("id", storeId)],
+  ];
+
+  for (const [label, run] of steps) {
+    const { error } = await run();
+    // Checked, not assumed. A silently failed cleanup leaves rows that collide
+    // with the next run under a unique constraint.
+    if (error) throw new Error(`Failed deleting ${label}: ${JSON.stringify(error)}`);
+  }
+}
+
 /** Minimal flag parsing, so scripts do not pull in an arg-parsing dependency. */
 export function args(argv = process.argv.slice(2)) {
   return {
