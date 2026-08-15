@@ -113,4 +113,16 @@ an order-correlated event.
 6. Launch path
 7. Drops and reservations
 
-Do not start 5 until 2 is proven end to end with a real test order.
+~~Do not start 5 until 2 is proven end to end with a real test order.~~
+
+SUPERSEDED 2026-08-11, by decision: build steps 4–7 out fully before ordering a
+sample. The original gate conflated two things. Writing the order pipeline moves
+no money; **accepting a real customer payment** does. So the gate moves rather
+than disappears:
+
+> **Do not accept a real customer payment until one real vendor order has been
+> placed and manufactured.** Code, dry runs, and test orders against our own
+> Stripe test keys are all fine before that. Live checkout is not.
+
+The failure this guards against is money taken for a garment that never gets
+made. That risk begins at the first live charge, not at the first line of code.

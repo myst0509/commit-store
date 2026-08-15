@@ -11,6 +11,7 @@
     "test": "tsx --test tests/*.test.ts",
     "verify:rls": "tsx scripts/verify-rls.ts",
     "curate": "tsx scripts/curate-catalog.ts",
+    "order:dry-run": "tsx scripts/order-dry-run.ts",
     "sync:catalog": "tsx scripts/sync-catalog.ts",
     "seed:demo": "tsx scripts/seed-demo.ts"
   },

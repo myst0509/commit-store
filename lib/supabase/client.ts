@@ -5,7 +5,17 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  * security decision, not a convenience one.
  */
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+/**
+ * Read at call time, not at import time. A module-level capture is evaluated
+ * when the module is first imported, which for a standalone script is before
+ * anything has had a chance to load .env.local — imports are hoisted above the
+ * first statement in the file that imports them.
+ */
+function url(): string {
+  const v = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!v) throw new Error("NEXT_PUBLIC_SUPABASE_URL is not set");
+  return v;
+}
 
 /**
  * Publishable key. Every query goes through RLS.
@@ -15,9 +25,10 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
  * route around with the service client.
  */
 export function publicClient(): SupabaseClient {
-  return createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
-    auth: { persistSession: false },
-  });
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!key) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY is not set");
+
+  return createClient(url(), key, { auth: { persistSession: false } });
 }
 
 /**
@@ -36,5 +47,5 @@ export function serviceClient(): SupabaseClient {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
 
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createClient(url(), key, { auth: { persistSession: false } });
 }

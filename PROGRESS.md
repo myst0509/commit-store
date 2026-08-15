@@ -207,7 +207,50 @@ unrecognized labels visible rather than dropping them.
 
 **`PRINTFUL_WEBHOOK_SECRET` generated** — 32 random bytes, in `.env.local`.
 
-## 4–7 — not started
+## 5a. Order pipeline — PARTIAL (vendor leg done, payment leg not started)
+
+`lib/orders/pipeline.ts` — order → vendor submission, service-role only.
+`npm run order:dry-run` prices a real order through Printful's live estimator
+without creating anything or moving money.
+
+The original gate ("do not start 5 until a real order is placed") was
+**superseded 2026-08-11 by decision** and re-drawn in PROJECT.md. Writing the
+pipeline moves no money; accepting a real customer payment does. The gate now
+reads: *do not accept a real customer payment until one real vendor order has
+been placed and manufactured.*
+
+Built: idempotent submission keyed on `orders.idempotency_key`, fulfillment
+records with attempt counts and classified errors, retry scheduling, and
+`recordSellerMargin` writing a net-14 ledger entry on delivery (idempotent on
+order+kind, so running twice cannot pay twice).
+
+Not built: Stripe, capture, refunds, the retry worker itself.
+
+### Two findings from the first dry run
+
+**Printful caps order `external_id` at 32 characters.** Undocumented; found by
+binary-searching the length. `idempotency_key` defaulted to
+`gen_random_uuid()::text`, which is 36 because of hyphens, so *every* order
+submission would have failed — and Printful reports it as "Invalid External ID
+specified", which sends you looking at the format rather than the length. Fixed
+in `0004`, plus a guard in the adapter that fails with an accurate message.
+
+**The current economics lose money on every order.** Real numbers from the dry
+run, on a Bella + Canvas 3001 priced at $32:
+
+| | |
+|---|---|
+| Customer pays | $32.00 |
+| Printful charges us | −$16.86 (blank $11.69 + shipping $4.75 + tax) |
+| Seller earns | −$15.31 (retail − base − fee) |
+| **We keep** | **−$0.17** |
+
+Nothing covers shipping. Seller margin is computed as `retail − base_cost − fee`,
+which ignores the ~$4.75 we pay to ship. The $32 price and $5 fee are demo
+values, but the structure is wrong at any price: shipping is a real cost with no
+line item. **Sidelined — needs a business decision.** See "Open decisions".
+
+## 4, 6, 7 — not started
 
 ---
 
@@ -226,6 +269,16 @@ unrecognized labels visible rather than dropping them.
 ---
 
 ## Open decisions
+
+- **Who pays for shipping.** The largest open question, and it invalidates the
+  current unit economics until answered. Printful charges ~$4.75 shipping per
+  US order on top of the blank. Nothing in the model covers it. Options:
+  charge the customer shipping on top of retail; fold an allowance into the
+  platform fee (raising it from ~$5 to ~$10, which changes the pitch); compute
+  seller margin as `retail − vendor_total − fee` so the seller absorbs it; or
+  offer free shipping above a threshold. Each changes what a seller is told
+  their margin is, so it should be settled before the launch path's pricing step
+  is built.
 
 - **`scripts/sync-catalog.ts` still uses plain `fetch` against PostgREST.**
   `@supabase/supabase-js` is now installed, so the script can be migrated. Only

@@ -67,6 +67,12 @@ const UNNAMED_COLOR = "Default";
 
 const MAX_RETRIES = 3;
 
+/**
+ * Undocumented, found by testing lengths against the live API: Printful rejects
+ * an order external_id longer than 32 characters. A UUID with hyphens is 36.
+ */
+const EXTERNAL_ID_MAX = 32;
+
 export class PrintfulProvider implements FulfillmentProvider {
   readonly id = "printful" as const;
 
@@ -574,6 +580,20 @@ export class PrintfulProvider implements FulfillmentProvider {
   }
 
   private orderBody(input: SubmitOrderInput) {
+    // Printful caps external_id at 32 characters and reports anything longer as
+    // "Invalid External ID specified", which sends you looking at the format
+    // rather than the length. Fail here instead, with a message that says what is
+    // actually wrong. A 36-character UUID is the obvious way to hit this.
+    if (input.localOrderId.length > EXTERNAL_ID_MAX) {
+      throw new FulfillmentError(
+        "validation",
+        `localOrderId is ${input.localOrderId.length} chars; Printful allows ` +
+        `${EXTERNAL_ID_MAX}. See migration 0004 — idempotency keys must be ` +
+        `hyphen-free UUIDs.`,
+        "printful",
+      );
+    }
+
     return {
       external_id: input.localOrderId,
       shipping: shippingSpeedToService(input.shippingSpeed),
