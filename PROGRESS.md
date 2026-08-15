@@ -19,12 +19,13 @@ Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` n
 | 2c | Next.js scaffold | **DONE** |
 | 3 | Storefront rendering (subdomain routing, theme, PDP) | **PARTIAL** — skeleton renders, no cart |
 | 4 | Design upload + mockup compositing | TODO |
-| 5 | Stripe Connect + checkout + order pipeline | TODO — gated on step 2 |
-| 6 | Launch path | TODO |
+| 5 | Stripe Connect + checkout + order pipeline | **PARTIAL** — checkout + webhook done; no Connect/payouts |
+| 6 | Launch path | **PARTIAL** — engine done, 8 of 21 steps defined |
 | 7 | Drops and reservations | TODO |
 
-PROJECT.md gates step 5 on step 2 being proven end to end with a real order.
-That gate has **not** been cleared.
+The original "no step 5 before a real order" gate was superseded 2026-08-11 — see
+PROJECT.md. The gate is now: **no real customer payment until a garment has been
+manufactured.** Test-mode charges and dry runs are fine; live checkout is not.
 
 ---
 
@@ -250,7 +251,35 @@ which ignores the ~$4.75 we pay to ship. The $32 price and $5 fee are demo
 values, but the structure is wrong at any price: shipping is a real cost with no
 line item. **Sidelined — needs a business decision.** See "Open decisions".
 
-## 4, 6, 7 — not started
+## 5. Payments — PARTIAL
+
+Checkout and the webhook are built and verified against Stripe test mode.
+**Not built: Connect Express onboarding, transfers, payouts, refunds-on-demand,
+the retry worker.**
+
+| | |
+|---|---|
+| `lib/stripe/client.ts` | Pinned API version; server-only |
+| `lib/orders/checkout.ts` | Cart → priced order → PaymentIntent |
+| `lib/orders/payment.ts` | Handlers for succeeded / failed / dispute / refund |
+| `app/api/webhooks/stripe/route.ts` | Verify → record → act |
+| `npm run checkout:test` | Real test-card checkout, end to end |
+| `npm run webhook:test` | 15 checks; signs payloads with the real secret |
+
+Verified on real runs: customer pays $36.75, seller earns $14.00, we keep $4.94
+(before vendor tax); the stored total matches the quote; `transfer_data` is
+absent; a duplicate event does not produce a second fulfilment; a charge for the
+wrong amount refuses to fulfil.
+
+**`FULFILLMENT_LIVE` defaults to false.** Printful has no sandbox — a submitted
+order is a real garment really charged to us. Without this guard, testing the
+payment path end to end would place a real order. Flip it deliberately, once.
+
+**Deferred by decision, do not re-raise as reminders:** the Printful resale
+certificate (worth 42c/order) and the merchant-of-record question. Both known,
+both the user's to action on their own timeline.
+
+## 4, 7 — not started
 
 ---
 
