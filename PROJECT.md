@@ -22,6 +22,22 @@ We are **merchant of record**. This is the single most important architectural c
 Seller-visible "product cost" = vendor base cost + our platform fee. The seller never sees the
 split. Our fee is a flat per-unit amount (~$4–6), not a percentage.
 
+**Shipping (settled 2026-08-11).** The end customer pays shipping as a separate line on top of the
+seller's retail price, quoted live from the vendor and passed through at cost. We do not profit
+from it and do not subsidise it. Sellers are told this up front — it is their customer's cost, not
+theirs. Seller margin is therefore `retail − vendor base − our fee`, untouched by what shipping
+happens to cost on any given order.
+
+**Our fee is not our revenue.** Two costs come out of our side before anything is left:
+
+- **Stripe** takes 2.9% + 30¢ of the *whole* charge, shipping included.
+- **Vendor sales tax**, unless we hold a resale certificate with the vendor — worth doing early,
+  it is pure recovered margin.
+
+On a real Bella + Canvas 3001 order priced at $32 with a $5 fee, a $5.00 gross fee nets **$3.21**.
+At a $3.31 fee — the number that makes seller cost a round $15 — it nets **$1.52**. Model the fee
+against net, never gross: see `lib/pricing.ts`, which is the only place this arithmetic lives.
+
 Implications you must respect:
 - Sellers never hold vendor API credentials. We do.
 - Every order flows through our Stripe account, not theirs.

@@ -109,25 +109,30 @@ async function main() {
     console.log(`  ${result.error?.kind}: ${result.error?.message}`);
     console.log(`  retryable: ${result.error?.retryable}`);
   } else {
-    const vendor = result.vendorCostCents ?? 0;
-    const gross = result.customerPaidCents;
+    const e = result.economics!;
 
-    console.log("Economics for this order");
-    console.log("  ────────────────────────────────────────────────");
-    console.log(`  Customer pays              ${usd(gross)}`);
-    console.log(`  Vendor charges us          ${usd(-vendor)}   (Printful's live estimate)`);
-    console.log(`  Seller earns (net 14)      ${usd(-result.sellerMarginCents)}`);
-    console.log("  ────────────────────────────────────────────────");
-    console.log(`  We keep                    ${usd(gross - vendor - result.sellerMarginCents)}`);
-    console.log(`    of which platform fee    ${usd(result.platformFeeCents)}`);
-    console.log();
-    console.log("  Note: vendor cost includes real shipping and tax, so it exceeds");
-    console.log("  the catalog base price. Our fee is charged per unit regardless.");
+    console.log("What the customer is charged");
+    console.log(`    Goods (seller's price)     ${usd(e.customerPaysCents - e.vendorShippingCents)}`);
+    console.log(`    Shipping                   ${usd(e.vendorShippingCents)}   passed through at cost`);
+    console.log(`                               ─────────`);
+    console.log(`    Total                      ${usd(e.customerPaysCents)}`);
 
-    const net = gross - vendor - result.sellerMarginCents;
-    if (net < 0) {
-      console.log(`\n  WARNING: this order loses ${usd(-net).trim()}.`);
-      console.log("  Shipping is not being covered. Retail price or shipping policy needs work.");
+    console.log("\nWhere it goes");
+    console.log(`    Printful — blank           ${usd(-(e.vendorTotalCents - e.vendorShippingCents - e.vendorTaxCents))}`);
+    console.log(`    Printful — shipping        ${usd(-e.vendorShippingCents)}`);
+    console.log(`    Printful — tax             ${usd(-e.vendorTaxCents)}   zero with a resale certificate`);
+    console.log(`    Stripe                     ${usd(-e.stripeFeeCents)}   2.9% + 30c`);
+    console.log(`    Seller (net 14)            ${usd(-e.sellerMarginCents)}`);
+    console.log(`                               ─────────`);
+    console.log(`    We keep                    ${usd(e.platformNetCents)}`);
+
+    console.log(`\n    Gross fee ${usd(e.platformGrossFeeCents).trim()} -> net ${usd(e.platformNetCents).trim()} after tax and card fees.`);
+
+    if (e.platformNetCents < 0) {
+      console.log(`\n  WARNING: this order loses ${usd(-e.platformNetCents).trim()}.`);
+    } else if (e.platformNetCents < 100) {
+      console.log("\n  Thin. Worth checking the fee against your real cost of");
+      console.log("  support, chargebacks and refunds before scaling.");
     }
   }
 

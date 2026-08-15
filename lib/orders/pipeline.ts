@@ -1,5 +1,6 @@
 import { getProvider } from "@/lib/fulfillment";
 import { FulfillmentError, type ProviderId, type SubmitOrderInput } from "@/lib/fulfillment/types";
+import { computeEconomics, type Economics } from "@/lib/pricing";
 import { serviceClient } from "@/lib/supabase/client";
 
 /**
@@ -34,6 +35,8 @@ export interface SubmitResult {
   sellerMarginCents: number;
   /** Our take before Stripe fees. Integer cents. */
   platformFeeCents: number;
+  /** Full breakdown, populated on a dry run where live vendor pricing is fetched. */
+  economics?: Economics & { vendorShippingCents: number; vendorTaxCents: number };
   error?: { kind: string; message: string; retryable: boolean };
 }
 
@@ -165,9 +168,35 @@ export async function submitOrderToVendor(
 
   try {
     if (dryRun) {
-      // Real vendor pricing, nothing created.
+      // Real vendor pricing, nothing created. Shipping is passed straight
+      // through to the customer, so what the vendor quotes is what we charge.
       const estimate = await provider.estimateCost(input);
-      return { ...base, ok: true, status: "estimated", vendorCostCents: estimate.totalCents };
+      const itemsRetailCents = lines.reduce(
+        (sum, l) => sum + l.retailPriceCents * l.quantity, 0,
+      );
+
+      const economics = computeEconomics({
+        itemsRetailCents,
+        shippingChargedCents: estimate.shippingCostCents,
+        vendorItemsCents: estimate.itemsCostCents,
+        vendorShippingCents: estimate.shippingCostCents,
+        vendorTaxCents: estimate.taxCents,
+        platformFeeCents,
+      });
+
+      return {
+        ...base,
+        ok: true,
+        status: "estimated",
+        vendorCostCents: estimate.totalCents,
+        customerPaidCents: economics.customerPaysCents,
+        sellerMarginCents: economics.sellerMarginCents,
+        economics: {
+          ...economics,
+          vendorShippingCents: estimate.shippingCostCents,
+          vendorTaxCents: estimate.taxCents,
+        },
+      };
     }
 
     const vendorOrder = await provider.submitOrder(input);
