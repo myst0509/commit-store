@@ -534,10 +534,25 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Launch path | **DONE** |
 | Designs | **DONE** |
 | Dashboard home | **DONE** |
-| Products | **TODO** — next; prompt written in LOVABLE.md |
-| Drops | **TODO** |
-| Order detail | **TODO** |
-| Payouts | **DONE** — built and loading (verified off-campus 2026-08-16) |
+| Products | **DONE** |
+| Drops | **DONE** |
+| Order detail | **DONE** |
+| Payouts | **DONE** |
+
+All eight built as of 2026-08-16. Routes, verified live:
+
+| Route | |
+|---|---|
+| `/auth` | sign in — there is no `/login` or `/signup` |
+| `/launch` `/dashboard` `/designs` `/products` `/drops` | list screens |
+| `/products/:id` `/orders/:id` | detail; no bare `/orders` index |
+| `/settings/payouts` | **must stay at this path** — it is where Stripe returns |
+
+API verified from the published origin the same day: all eight endpoints answer
+`401 {"error":"Sign in to continue"}` unauthenticated, the CORS preflight
+returns the right allow headers, an unlisted origin gets none, and **CORS
+headers are present on error responses too** — without that, a 400 or 404 would
+surface in the browser as a CORS failure instead of the message it carries.
 
 Order matters: the launch path's `price` step creates a product with nowhere to
 view it, and its `drop_date` step needs a `productId` it cannot currently pick.
@@ -579,10 +594,13 @@ chased again:
   (`app/api/designs/route.ts:11`), and Supabase was reachable while the API was
   not.
 
-**Do not debug the frontend from campus.** Confirm against cellular before
-concluding anything is broken. This also raises the priority of a real domain:
-`*.vercel.app` is unreachable here, and one is needed for seller subdomains
-anyway.
+**Do not debug the frontend from campus without a VPN.** A VPN was set up on
+2026-08-16 and resolves it completely — the API answers in under a second
+through it, for the browser and for command-line tooling alike. Without one,
+confirm against cellular before concluding anything is broken.
+
+This still raises the priority of a real domain: `*.vercel.app` is unreachable
+on this network, and a domain is needed for seller subdomains anyway.
 
 Two things the frontend has to know and cannot infer:
 
