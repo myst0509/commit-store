@@ -360,7 +360,28 @@ owns it.
 
 Not built: any seller or storefront UI for drops.
 
-## 4 — not started
+## 4. Design upload and mockups — PARTIAL
+
+`lib/design/validate.ts` — artwork checked against the print areas and minimum
+DPI the catalog sync pulled from the vendor. Errors block, warnings do not; low
+resolution is reported with both escape routes (print smaller, up to a stated
+size, or supply this many pixels). The design step reads the real bytes rather
+than trusting client-reported dimensions.
+
+`lib/mockup/composite.ts` — displacement map, mask, multiply, per PROJECT.md.
+Sharp has no displacement operator, so that step works in raw pixel space.
+Edges clamp rather than wrap. `over` blend is available for dark garments, where
+real DTG prints over a white underbase and multiply would erase the ink.
+13 tests, including that ink cannot escape the mask onto a collar or sleeve.
+`npm run mockup:sample` renders flat versus displaced side by side.
+
+**BLOCKED ON ASSETS, not on code.** A real template needs three files per blank:
+a photograph of the garment, a mask that is white where the print goes, and a
+greyscale map of the folds. That is photography and retouching.
+
+Interim alternative: Printful generates mockups itself — `capabilities()`
+reports `vendorMockups: true` — which needs no assets but is async and rate
+limited, so it suits catalogue imagery rather than a live design tool.
 
 ---
 
