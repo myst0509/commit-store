@@ -441,18 +441,35 @@ limited, so it suits catalogue imagery rather than a live design tool.
   > platform store. Seller stores must be created as the latter.
 - Token access level: **account-level**, verified empirically.
 
-## Deployment — not started
+## Deployment — LIVE (partially configured)
 
-Nothing is deployed. The app runs only via `npm run dev`, and **the crons in
-`vercel.json` do nothing until it is.** When deploying:
+**https://commit-store-xuav.vercel.app** — Vercel project `commit-store-xuav`,
+deploying from GitHub `myst0509/commit-store` (private), branch `main`.
 
-1. A GitHub repo — 21 local commits, no remote configured.
-2. A Vercel project pointed at it.
-3. **Every secret re-entered** in Vercel → Settings → Environment Variables.
-   `.env.local` is gitignored and Vercel never sees it. `CRON_SECRET` in
-   particular: without it the scheduled routes return 503 and silently never run.
-4. Wildcard DNS for `*.ourdomain.com`, plus custom-domain handling.
-5. `FULFILLMENT_LIVE` stays **false** until a real garment has been made.
+Verified working: the marketing page renders, and `/api/dashboard` returns
+`{"error":"Sign in to continue"}` — the API is live and refusing unauthenticated
+requests.
+
+Still outstanding:
+
+- [ ] **Stripe webhook.** Not created. Add an endpoint at
+      `https://commit-store-xuav.vercel.app/api/webhooks/stripe` in the
+      **LifeBoat sandbox**, subscribe to the five events in DEPLOY.md, then set
+      `STRIPE_WEBHOOK_SECRET` in Vercel to the `whsec_` it generates and
+      redeploy. It is currently a placeholder, so every webhook is rejected.
+- [ ] **`NEXT_PUBLIC_ROOT_DOMAIN`** — confirm it is set to the Vercel host.
+- [ ] **External scheduler.** `vercel.json` runs `/api/cron/tick` once daily,
+      which is all the Hobby plan allows. The retry sweep needs to run every ten
+      minutes to be worth having. Point cron-job.org at the same URL with
+      `Authorization: Bearer <CRON_SECRET>`.
+- [ ] **Delete the duplicate `commit-store` Vercel project.** Two projects on
+      one repo both rebuild on every push and both need env vars kept in sync.
+- [ ] **Storefronts need a real domain.** `*.vercel.app` cannot be wildcarded,
+      so seller subdomains have nowhere to live yet.
+
+**Campus network note:** UC Riverside's network resets connections to
+`*.vercel.app`, so the deployment is unreachable from campus. It works from
+other networks. Local development on `localhost:3000` is unaffected.
 
 ## Chores
 
