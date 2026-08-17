@@ -41,6 +41,17 @@ export function isStorefrontHost(host: string): boolean {
   const h = normalizeHost(host);
   const root = rootDomain();
 
+  // Platform hosting domains are never a seller's storefront. Vercel cannot
+  // wildcard *.vercel.app, so a storefront could not live there even in
+  // principle — and without this, a misconfigured NEXT_PUBLIC_ROOT_DOMAIN makes
+  // the deployment 404 on every page, because every host looks like an
+  // unclaimed custom domain. One unset variable should not take the site down.
+  if (h.endsWith(".vercel.app") || h.endsWith(".netlify.app")) return false;
+
+  // Nothing sensible to compare against. Serve our own pages rather than
+  // treating the whole internet as unclaimed storefronts.
+  if (!root || root.includes("replace") || root.includes("_")) return false;
+
   if (h === root) return false;
   if (h.endsWith(`.${root}`)) {
     const sub = h.slice(0, -(root.length + 1));
