@@ -4,6 +4,16 @@ architectural constraints, which are not obvious from the code.
 Then read PROGRESS.md for current state: what is done, what is verified vs merely
 written, and which decisions are already settled. Update it when something lands.
 
+Also in the repo: DEPLOY.md (deployment sequence and what is still
+unconfigured) and LOVABLE.md (the frontend is built separately in Lovable
+against the /api routes; that file holds the handoff prompt and the API shapes).
+
+The scripts under `scripts/` are how things get verified — `npm test`,
+`npm run verify:rls`, `npm run api:test`, `npm run checkout:test`,
+`npm run webhook:test`, `npm run drop:test`, `npm run payout:test`,
+`npm run retry:test`, `npm run order:dry-run`. Prefer running one over assuming
+something works.
+
 Hard rules:
 - All money is integer cents. Never floats, never numeric.
 - No vendor SDK, endpoint, or field name outside lib/fulfillment/.
