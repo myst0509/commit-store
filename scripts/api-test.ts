@@ -104,6 +104,26 @@ function postWithHost(path: string, body: unknown, host: string): Promise<Respon
   });
 }
 
+
+function getWithHost(path: string, host: string): Promise<Response> {
+  const url = new URL(BASE);
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { hostname: url.hostname, port: url.port, path, method: "GET", headers: { host } },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => resolve(new Response(Buffer.concat(chunks), {
+          status: res.statusCode ?? 500,
+          headers: { "content-type": res.headers["content-type"] ?? "application/json" },
+        })));
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 /** Anything that would tell a seller, or a shopper, what we pay. */
 function leaksCost(text: string): string[] {
   return ["base_cost_cents", "platform_fee_cents", "baseCostCents", "platformFeeCents",
@@ -231,6 +251,87 @@ async function main() {
     await sb.from("order_items").delete().eq("order_id", checkoutBody.orderId);
     await sb.from("orders").delete().eq("id", checkoutBody.orderId);
   }
+
+
+  console.log("\nDesigns");
+  const designsUnauth = await get("/api/designs");
+  check("/api/designs refuses an unauthenticated request",
+    designsUnauth.status === 401, `got ${designsUnauth.status}`);
+
+  // POST-only, so a GET returns 405 before auth runs — the verb has to match
+  // for the check to mean anything.
+  const uploadUnauth = await post("/api/designs/upload-url", { filename: "a.png" });
+  check("/api/designs/upload-url refuses an unauthenticated request",
+    uploadUnauth.status === 401, `got ${uploadUnauth.status}`);
+
+  const badExt = await post("/api/designs/upload-url", { filename: "virus.exe" }, sellerA.token);
+  check("an unsupported file type is refused", badExt.status === 400, `${badExt.status}`);
+  console.log(`        ${(await badExt.json()).error}`);
+
+  const signed = await post("/api/designs/upload-url", { filename: "My Logo!.png" }, sellerA.token);
+  const signedBody = await signed.json();
+  check("a signed upload URL is issued", signed.status === 200 && !!signedBody.uploadUrl);
+  check("  the path is scoped to the caller's store",
+    signedBody.storagePath?.startsWith(`${sellerA.storeId}/`), signedBody.storagePath);
+  check("  and the filename is sanitised",
+    /^[a-z0-9/-]+\.png$/.test(signedBody.storagePath ?? ""), signedBody.storagePath);
+
+  // The check that matters: registering a file from someone else's folder.
+  const stolen = await post("/api/designs",
+    { storagePath: `${sellerB.storeId}/someone-elses.png` }, sellerA.token);
+  check("cannot claim another seller's uploaded file", stolen.status === 403, `${stolen.status}`);
+
+  console.log("\nProducts and orders belong to their owner");
+  const { data: demoStore } = await sb.from("stores").select("id").eq("subdomain", "demo").single();
+  const { data: demoProduct } = await sb
+    .from("products").select("id").eq("store_id", demoStore!.id).limit(1).single();
+
+  const foreignProduct = await get(`/api/products/${demoProduct!.id}`, sellerA.token);
+  check("another store's product reads as not found", foreignProduct.status === 404,
+    `${foreignProduct.status} — 403 would confirm it exists`);
+
+  const foreignPatch = await fetch(`${BASE}/api/products/${demoProduct!.id}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", authorization: `Bearer ${sellerA.token}` },
+    body: JSON.stringify({ status: "archived" }),
+  });
+  check("and cannot be modified", foreignPatch.status === 404, `${foreignPatch.status}`);
+
+  const { data: stillLive } = await sb
+    .from("products").select("status").eq("id", demoProduct!.id).single();
+  check("  the demo product is untouched", stillLive?.status === "published", stillLive?.status);
+
+  const missingOrder = await get(`/api/orders/${crypto.randomUUID()}`, sellerA.token);
+  check("an unknown order is not found", missingOrder.status === 404);
+
+  console.log("\nDrops");
+  const noProduct = await post("/api/drops", { closesAt: new Date(Date.now() + 864e5).toISOString() }, sellerA.token);
+  check("a drop needs a product", noProduct.status === 400);
+
+  const pastDate = await post("/api/drops",
+    { productId: demoProduct!.id, closesAt: new Date(Date.now() - 864e5).toISOString() }, sellerA.token);
+  check("a closing date in the past is refused", pastDate.status === 400);
+
+  const foreignDrop = await post("/api/drops",
+    { productId: demoProduct!.id, closesAt: new Date(Date.now() + 864e5).toISOString() }, sellerA.token);
+  check("cannot schedule a drop on another store's product", foreignDrop.status === 404,
+    `${foreignDrop.status}`);
+
+  const dropList = await get("/api/drops", sellerA.token);
+  check("drops list is scoped to the caller", dropList.status === 200);
+
+  console.log("\nPublic storefront JSON");
+  const sfUnknown = await getWithHost("/api/storefront", "nosuchstore.localhost");
+  check("an unknown host is a 404", sfUnknown.status === 404, `${sfUnknown.status}`);
+
+  const sf = await getWithHost("/api/storefront", "demo.localhost");
+  const sfBody = await sf.json();
+  check("a real storefront returns its products", sf.status === 200 && Array.isArray(sfBody.products),
+    JSON.stringify(sfBody).slice(0, 90));
+  check("  including sizes in wearing order",
+    sfBody.products?.[0]?.variants?.length > 0);
+  const sfLeak = leaksCost(JSON.stringify(sfBody));
+  check("  and nothing about our cost", sfLeak.length === 0, sfLeak.join(", "));
 
   const missingAddress = await post("/api/checkout", {
     lines: [{ productVariantId: variant!.id, quantity: 1 }],
