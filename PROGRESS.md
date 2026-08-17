@@ -542,6 +542,33 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 Order matters: the launch path's `price` step creates a product with nowhere to
 view it, and its `drop_date` step needs a `productId` it cannot currently pick.
 
+### Signup created no store — found 2026-08-16
+
+Every screen except Designs hung on an infinite spinner. The cause was not in
+Lovable.
+
+`create_store` (`lib/launch/actions.ts:81`) says *"the store row itself is
+created before this by signup; this names it"* and only runs an `UPDATE`. There
+was no signup trigger — nothing ever inserted the row. So a new user owned no
+store, and `requireSeller` (`lib/auth/session.ts:71`) 404s without one. That
+includes `/api/launch`, whose first step is the thing that was supposed to
+create the store. Circular, and it blocked every seller who ever signed up.
+
+Fixed by `0005_store_on_signup.sql` — **written, not yet applied**. The one
+affected account was patched by hand in the meantime.
+
+Two things this exposed on the frontend side, both still open:
+
+- **A non-401 error renders as an infinite spinner.** The API returned a clean
+  `404 {"error":"You do not have a store yet"}` and the screens showed a
+  loading state forever. They appear to handle only 200 and 401. Every backend
+  error currently reads as a hang rather than the message it sent.
+- **Designs kept working when everything else 404ed**, which it should not have
+  — it calls `requireSeller` too. Unconfirmed, but the likely explanation is
+  that it queries Supabase directly, which is the exact default LOVABLE.md
+  warns about. Check the Network tab: requests to `supabase.co` rather than the
+  API would confirm it.
+
 Two things the frontend has to know and cannot infer:
 
 - **There are no list endpoints** except `/api/drops`. Products and orders lists
@@ -565,6 +592,11 @@ Two things the frontend has to know and cannot infer:
 - [x] **`0004_vendor_safe_idempotency_key.sql` applied** 2026-08-11 and verified:
       the column default now produces a 32-character key, and a 36-character
       value is rejected by the constraint.
+- [ ] **Apply `0005_store_on_signup.sql`.** Written 2026-08-16, NOT yet applied.
+      Paste it into the Supabase SQL editor — there is no migration runner in
+      `package.json`. Until it is applied, every new signup is broken (see the
+      frontend section). The affected account was patched by hand on
+      2026-08-16, so the migration's backfill is currently a no-op.
 - [ ] **Re-enable "Confirm email" in Supabase Auth before real sellers exist.**
       Turned off 2026-08-16 for development: Supabase's built-in auth mail is
       free but heavily rate-limited and not intended for production, so
