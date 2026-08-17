@@ -2,15 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     {
-      "path": "/api/cron/retry-fulfillments",
-      "schedule": "*/10 * * * *"
-    },
-    {
-      "path": "/api/cron/resolve-drops",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/payouts",
+      "path": "/api/cron/tick",
       "schedule": "0 9 * * *"
     }
   ]

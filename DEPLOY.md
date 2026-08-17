@@ -75,16 +75,40 @@ Copy the signing secret it shows and set `STRIPE_WEBHOOK_SECRET` in Vercel to
 mismatch means every webhook is rejected as a forgery — which looks exactly like
 Stripe being broken.
 
-## 6. Cron
+## 6. Scheduled jobs
 
-`vercel.json` schedules three jobs; Vercel picks them up on deploy. Check
-Settings → Cron Jobs lists all three:
+Vercel's Hobby plan allows **two cron jobs, firing once a day**. That is why all
+the background work lives behind one endpoint, `/api/cron/tick`, rather than
+three schedules. `vercel.json` registers it once daily, which fits the free plan.
 
-| Path | Schedule | |
-|---|---|---|
-| `/api/cron/retry-fulfillments` | every 10 min | orders paid but never submitted |
-| `/api/cron/resolve-drops` | hourly | capture at threshold, release when short |
-| `/api/cron/payouts` | daily 09:00 | pay sellers what has matured |
+Confirm Settings -> Cron Jobs lists `/api/cron/tick`.
+
+**Once a day is not enough on its own.** The retry sweep exists so an order that
+was paid for but never reached the vendor gets recovered in minutes, not
+tomorrow. Point an external scheduler at the same URL every 10 minutes:
+
+```
+GET https://<host>/api/cron/tick
+Header: Authorization: Bearer <CRON_SECRET>
+```
+
+cron-job.org is free and supports custom headers. So does GitHub Actions, though
+a 10-minute schedule on a private repo will consume the free minutes allowance —
+hourly fits comfortably.
+
+The endpoint decides what to run:
+
+| | |
+|---|---|
+| retry sweep | every call |
+| drop resolution | every call |
+| payouts | only in the 09:00 UTC hour, so sellers get one statement a day |
+
+Repeated calls are safe. Payouts claim ledger entries before transferring, so a
+second pass in the same hour finds nothing left to pay.
+
+`?jobs=retry,drops,payouts` runs a subset by hand — useful for testing payouts
+outside their window.
 
 ---
 
