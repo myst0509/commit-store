@@ -295,7 +295,7 @@ both the user's to action on their own timeline.
 ## 5b. Payouts — PARTIAL
 
 `lib/payouts/` — Connect Express onboarding and the payout run.
-`npm run payout:test` (11 checks).
+`npm run payout:test` (14 checks, all passing against test-mode Connect).
 
 **The ordering is the safety argument.** Record the payout → CLAIM the ledger
 entries by stamping `payout_id` → only then create the Transfer. A crash mid-run
@@ -314,9 +314,23 @@ Express accounts, not Standard — Stripe hosts identity and bank collection so 
 never touch either. `transfers` capability only; every charge belongs to the
 platform account.
 
-**Not verified: onboarding and a successful transfer.** Connect is not enabled on
-the Stripe account (`dashboard.stripe.com/connect`). The test reports this as a
-skip rather than a pass it did not earn.
+**Connect enabled 2026-08-16.** `npm run payout:test` no longer skips: all 14
+checks run and pass against test mode. Account creation is now verified for
+real — an Express account is created, a second call reuses it rather than
+duplicating, and payouts are correctly not enabled before onboarding (8
+requirements outstanding).
+
+**Still not verified: a successful transfer.** The only transfer the suite
+attempts is the one it makes fail on purpose, to prove a failed transfer
+releases its claim rather than stranding the money. That failure now arrives
+as a real Stripe error — *"your destination account needs to have at least one
+of the following capabilities enabled"* — because the test account is created
+but never onboarded. Correct behaviour, and it exercises the recovery path, but
+money has still never successfully moved to a seller.
+
+Closing that needs a connected account taken all the way through Stripe's
+hosted onboarding with test values, so `transfers` becomes active. Everything
+required is now in place to do it.
 
 Noted for later: Stripe's SDK now recommends Accounts v2 for new Connect
 integrations. v1 is what is built and works; migrate deliberately.
@@ -462,8 +476,10 @@ Still outstanding:
       which is all the Hobby plan allows. The retry sweep needs to run every ten
       minutes to be worth having. Point cron-job.org at the same URL with
       `Authorization: Bearer <CRON_SECRET>`.
-- [ ] **Delete the duplicate `commit-store` Vercel project.** Two projects on
-      one repo both rebuild on every push and both need env vars kept in sync.
+- [x] **Deleted the duplicate `commit-store` Vercel project** 2026-08-16. Both
+      projects inherited `vercel.json`, so both scheduled `/api/cron/tick` at
+      09:00 UTC — which is `PAYOUT_HOUR_UTC`. Two payout runs a day against one
+      database. `commit-store-xuav` is the only project now.
 - [ ] **Storefronts need a real domain.** `*.vercel.app` cannot be wildcarded,
       so seller subdomains have nowhere to live yet.
 
@@ -485,7 +501,7 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Products | **TODO** — next; prompt written in LOVABLE.md |
 | Drops | **TODO** |
 | Order detail | **TODO** |
-| Payouts | **BLOCKED** — Connect not enabled, and `APP_ORIGIN` unset |
+| Payouts | **TODO** — unblocked 2026-08-16; prompt written in LOVABLE.md |
 
 Order matters: the launch path's `price` step creates a product with nowhere to
 view it, and its `drop_date` step needs a `productId` it cannot currently pick.
@@ -494,13 +510,13 @@ Two things the frontend has to know and cannot infer:
 
 - **There are no list endpoints** except `/api/drops`. Products and orders lists
   come out of `/api/dashboard`; only detail routes are per-id.
-- **`APP_ORIGIN` must be set in Vercel to the Lovable app origin** before the
-  payouts screen is built. `POST /api/connect/onboard` only accepts a
-  `returnUrl` starting with that value and otherwise falls back to
-  `http://app.localhost:3000`, stranding a seller returning from Stripe.
-  Renamed from `NEXT_PUBLIC_APP_URL` on 2026-08-16 — it is read server-side
-  only, so the prefix would have inlined it into the client bundle and pinned
-  it at build time.
+- **`APP_ORIGIN` is set in Vercel and deployed** (2026-08-16, commit `7f94b4e`).
+  `POST /api/connect/onboard` only accepts a `returnUrl` starting with that
+  value and otherwise falls back to `http://app.localhost:3000`, stranding a
+  seller returning from Stripe. Renamed from `NEXT_PUBLIC_APP_URL` — it is read
+  server-side only, so the prefix would have inlined it into the client bundle
+  and pinned it at build time. **The exact host has not been confirmed from a
+  browser**; `lovable.app` is the spelling used everywhere else in this repo.
 
 ## Chores
 
@@ -524,7 +540,7 @@ Acknowledged and deliberately deferred. Record status if asked; do not prompt.
 - **Printful resale certificate.** Worth ~42c per order. Takes time to file.
 - **Merchant-of-record question with Printful.** The largest unhedged
   assumption in the project, and the user is aware of it.
-- **Enable Connect** at `dashboard.stripe.com/connect` — blocks payout testing.
+- ~~**Enable Connect** at `dashboard.stripe.com/connect`~~ — done 2026-08-16.
 - **The first real Printful order** — blocks live charges.
 
 ## Sidelined — needs a decision or a second pair of eyes

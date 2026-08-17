@@ -236,26 +236,103 @@ charged, only authorised. Label it clearly and do not describe it as a sale.
 Render totals exactly as sent. Do not derive yourEarningsCents from the items.
 ```
 
-### 4. Payouts — do not build yet
+### 4. Payouts
 
-Blocked twice over, both outside Lovable:
+Unblocked 2026-08-16: Connect is enabled on the Stripe account and `APP_ORIGIN`
+is set and deployed.
 
-- Connect is not enabled on the Stripe account, so `GET /api/connect/onboard`
-  cannot return a real status.
-- `POST /api/connect/onboard` only accepts a `returnUrl` that starts with
-  `APP_ORIGIN`, which currently defaults to `http://app.localhost:3000`. Set it
-  in Vercel to the Lovable app origin first, or a seller finishing Stripe
-  onboarding gets redirected to localhost and is stranded.
+**Build this screen at the route `/settings/payouts`.** That is not arbitrary —
+it is where Stripe sends the seller back, and matching it means the request
+never has to name a URL. See the note after the prompt.
 
-  Use the **published** Lovable origin, not the in-editor preview one, and note
-  that unlike `CORS_ALLOWED_ORIGINS` this is a plain `startsWith` — a
-  `https://*.lovable.app` wildcard matches nothing here.
+```
+Add a Payouts screen at the route /settings/payouts. It answers one question:
+"where is my money, and what do I have to do to get it."
 
-When both are cleared: `GET /api/connect/onboard` returns
-`{ connected, ready, detailsSubmitted, outstanding[], disabledReason }`;
-`POST` returns `{ url }` to redirect to Stripe's hosted flow. `outstanding` is
-Stripe's own requirement codes — show them so a stalled seller can see what is
-missing.
+It reads from two endpoints.
+
+GET /api/dashboard — the money itself
+  earnings: { payableCents, pendingCents, lifetimeCents, payoutsHeld }
+  payouts:  [ { id, amountCents, status, scheduledFor, paidAt } ]
+
+GET /api/connect/onboard — the bank connection
+  { connected, ready, detailsSubmitted, outstanding: [...], disabledReason }
+
+FOUR STATES, and the screen looks different in each. Drive them off
+connected/ready, never off your own guess.
+
+1. connected false — no bank yet.
+   The main action. "Add your bank details so we can pay you."
+   POST /api/connect/onboard with an EMPTY body {} -> { url }
+   Send the browser to that url. It is Stripe's own hosted page.
+
+2. connected true, ready false — started but not finished.
+   This is the state sellers get stuck in, so make it the clearest one.
+   Show `outstanding` as a list of what Stripe still needs. Those are Stripe's
+   own requirement codes like "individual.verification.document" — print them
+   as given, plainly labelled "Stripe still needs:". Do NOT invent friendly
+   translations; guessing wrong sends someone hunting for the wrong document.
+   Offer a button to continue, which POSTs again for a FRESH url.
+   If disabledReason is set, show it too.
+
+3. connected true, ready true — done.
+   A quiet confirmation, not a celebration. Then get out of the way and show
+   the money.
+
+4. earnings.payoutsHeld true — payouts are on hold for this store.
+   Show this ABOVE everything else, and say the money is held, not lost. This
+   is a real state and defaults to on. Never let a seller conclude their
+   earnings vanished.
+
+THE MONEY
+
+payableCents — clear, waiting for the next payout run.
+pendingCents — earned, but still inside the 14-day window after delivery.
+lifetimeCents — everything they have ever earned.
+
+Say "clears 14 days after delivery", never "net 14".
+
+Two rules sellers WILL ask about, so state them on the screen rather than in a
+tooltip:
+- Payouts run once a day, at 09:00 UTC.
+- Anything under $10.00 rolls forward to the next run instead of being paid.
+  Phrase it as a floor, not a failure: "balances under $10 roll over".
+
+PAYOUT HISTORY
+List `payouts` with amount, status and date — paidAt when present, otherwise
+scheduledFor. Empty state: say when the first one will happen, not "no data".
+
+RETURNING FROM STRIPE
+Stripe sends the seller back to this same route with a query parameter.
+  ?done=1    -> they finished the flow (or think they did)
+  ?refresh=1 -> the link expired or was rejected
+
+On ?done=1 you MUST re-fetch GET /api/connect/onboard before showing anything.
+Coming back does NOT mean it worked — people abandon halfway and still land
+here. Trust `ready` from the server, never the presence of the parameter.
+
+On ?refresh=1, immediately POST for a new url and send them back. The old link
+is dead; Stripe's are single-use.
+
+DO NOT
+- Never build a form for bank details, account numbers, routing numbers, or
+  ID documents. Stripe collects all of it on their own page. That is the whole
+  reason this flow exists.
+- Do not compute, sum or convert any amount. Render what the server sends.
+- Do not treat "connected" as "ready". They are different fields for a reason.
+```
+
+**Why the route matters.** `POST /api/connect/onboard` accepts `returnUrl` and
+`refreshUrl`, but only honours them if they start with `APP_ORIGIN` — otherwise
+it silently falls back to `${APP_ORIGIN}/settings/payouts?done=1` and
+`?refresh=1` ([route.ts:47](app/api/connect/onboard/route.ts:47)). Silently, with
+no error. So the safe move is the one in the prompt: build at
+`/settings/payouts`, post an empty body, and let the defaults be right. Passing
+a URL only adds a way to be wrong.
+
+If the screen ever does need to live elsewhere, the URL must start with exactly
+the `APP_ORIGIN` value — a `https://*.lovable.app` wildcard matches nothing
+here, unlike `CORS_ALLOWED_ORIGINS`.
 
 **Designs** (built) — `POST /api/designs/upload-url` with `{ filename }` returns
 `{ uploadUrl, token, storagePath }`. Upload the file to `uploadUrl` directly,
