@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-11 · 21 commits · 83 unit tests + 50 integration checks
+**Last updated:** 2026-08-11 · 25 commits · 96 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -23,7 +23,7 @@ Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` n
 | 2b | Catalog cached into Postgres | **DONE** |
 | 2c | Next.js scaffold | **DONE** |
 | 3 | Storefront rendering (subdomain routing, theme, PDP) | **PARTIAL** — skeleton renders, no cart |
-| 4 | Design upload + mockup compositing | TODO |
+| 4 | Design upload + mockup compositing | **PARTIAL** — code done; blocked on garment template assets |
 | 5 | Stripe Connect + checkout + order pipeline | **PARTIAL** — checkout + webhook done; no Connect/payouts |
 | 6 | Launch path | **PARTIAL** — engine done, 8 of 21 steps defined |
 | 7 | Drops and reservations | **PARTIAL** — resolution done and verified; no seller UI |
@@ -121,9 +121,9 @@ in front of someone starting their first clothing label.
 Next 16.3 / React 19.2 / Tailwind 4, App Router, TypeScript strict.
 `npm run build` and `npm run typecheck` both pass.
 
-Approved dependency set is deliberately small — core only. **Sharp (step 4) and
-Stripe (step 5) are not installed**; add them when their steps arrive rather than
-up front.
+Dependencies: core, plus Sharp (step 4) and Stripe (step 5), each added when its
+step arrived rather than up front.
+
 
 | Command | |
 |---|---|
