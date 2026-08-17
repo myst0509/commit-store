@@ -565,6 +565,14 @@ Two things the frontend has to know and cannot infer:
 - [x] **`0004_vendor_safe_idempotency_key.sql` applied** 2026-08-11 and verified:
       the column default now produces a 32-character key, and a 36-character
       value is rejected by the constraint.
+- [ ] **Re-enable "Confirm email" in Supabase Auth before real sellers exist.**
+      Turned off 2026-08-16 for development: Supabase's built-in auth mail is
+      free but heavily rate-limited and not intended for production, so
+      repeated sign-in testing silently stops receiving mail and reads as a
+      broken login. With confirmation off, anyone can register an address they
+      do not control — fine for our own test accounts, not fine live. The
+      proper fix is custom SMTP (Resend/Postmark/SendGrid), which is needed
+      for production anyway.
 - [ ] Rotate the Printful token (exposed in chat during development)
 - [x] `drop table notes;` — done, Supabase starter leftover removed
 - [x] Generate `PRINTFUL_WEBHOOK_SECRET` — done, 32 random bytes in `.env.local`
