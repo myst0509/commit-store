@@ -102,7 +102,7 @@ women's shirts and hoodies).
 | Incomplete blanks | 0 |
 | Blanks with no print areas | 0 |
 | Variants with invalid cost | 0 |
-| **Enabled blanks** | **0 — nothing is seller-visible yet** |
+| **Enabled blanks** | **12** — the `--starter` set, applied 2026-08-16 |
 
 Top brands: Bella + Canvas (24), Stanley/Stella (18), AS Colour (13), Gildan (11),
 Cotton Heritage (10), Comfort Colors (10). 28 blanks are Printful's own unbranded
@@ -115,6 +115,23 @@ already built on should fail, and does. Colors and placements are replaced whole
 To make blanks sellable, re-run with `--enable` or flip `is_enabled` per blank. Do
 that deliberately: it is the difference between a curated catalog and 167 options
 in front of someone starting their first clothing label.
+
+**The starter catalog was applied 2026-08-16** — 12 blanks enabled, verified
+with `npm run curate -- --list`:
+
+| | |
+|---|---|
+| Gildan | 5000 ($9.25), 64000 ($9.44) |
+| Printstar | 00085-CVT ($9.75) |
+| Next Level | 6210 ($11.25) |
+| Bella + Canvas | 3001 ($11.69), 3413 ($17.95) |
+| Stanley/Stella | STTU169 ($13.95), SATU001 ($15.60) |
+| Comfort Colors | 1717 ($15.29), 9360 ($18.07) |
+| Cotton Heritage | MC1790 ($16.29) |
+| AS Colour | 5001 ($18.95) |
+
+Eight brands, $9.25–$18.95, all DTG-printable. Reversible with
+`npm run curate -- --disable --all --apply`, then re-enable what you want.
 
 ## 2c. Next.js scaffold — DONE
 
@@ -580,10 +597,8 @@ they are known, and their turn comes last.
 
 Raised deliberately rather than guessed at:
 
-- **Curating the starter catalog.** `npm run curate -- --enable --starter --apply`
-  is ready and previewed (Comfort Colors 1717, Gildan 5000/64000, Bella + Canvas
-  3413, Stanley/Stella STTU169, Next Level 6210 and similar). Which blanks a brand
-  is built on is merchandising, not engineering.
+- ~~**Curating the starter catalog.**~~ Applied 2026-08-16 — 12 blanks enabled.
+  See the catalog section above for the list.
 - **Cart and checkout.** Gated on a real vendor order per PROJECT.md. Building a
   buy button before a garment has ever been manufactured is the exact failure the
   build order exists to prevent.
