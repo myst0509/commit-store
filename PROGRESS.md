@@ -328,9 +328,28 @@ of the following capabilities enabled"* — because the test account is created
 but never onboarded. Correct behaviour, and it exercises the recovery path, but
 money has still never successfully moved to a seller.
 
-Closing that needs a connected account taken all the way through Stripe's
-hosted onboarding with test values, so `transfers` becomes active. Everything
-required is now in place to do it.
+A test payout was completed **by hand in the Stripe dashboard** on 2026-08-16
+and worked. That confirms Connect and the `transfers` capability are correctly
+set up on the account — but it goes around `runPayouts()`, so the
+claim-before-transfer ordering, the `payout_id` stamping and the $10 floor are
+still only proven against failures.
+
+**`npm run payout:test` cannot close this gap on its own.** It creates a fresh
+Express account (`payout-test.ts:55`) and deletes it again in the finally block
+(`payout-test.ts:165`), and a brand-new account never has `transfers` active —
+so its transfer is always going to fail. That is deliberate; the suite tests
+the recovery path.
+
+The procedure that would close it, using the flag already in the script:
+
+1. `npm run payout:test -- --keep` — skips cleanup, so the connected account
+   survives with its id still on the store.
+2. Take that account through Stripe's hosted onboarding with test values.
+3. `npm run payout:test -- --keep` again — `ensureConnectAccount` reuses the
+   stored id (`connect.ts:42`) rather than creating a new one, so the transfer
+   runs against an onboarded destination.
+
+Until step 3 passes, no money has ever moved to a seller through our own code.
 
 Noted for later: Stripe's SDK now recommends Accounts v2 for new Connect
 integrations. v1 is what is built and works; migrate deliberately.
@@ -515,8 +534,9 @@ Two things the frontend has to know and cannot infer:
   value and otherwise falls back to `http://app.localhost:3000`, stranding a
   seller returning from Stripe. Renamed from `NEXT_PUBLIC_APP_URL` — it is read
   server-side only, so the prefix would have inlined it into the client bundle
-  and pinned it at build time. **The exact host has not been confirmed from a
-  browser**; `lovable.app` is the spelling used everywhere else in this repo.
+  and pinned it at build time. The value is
+  **`https://commit-store.lovable.app`**, confirmed 2026-08-16 — note
+  `lovable`, not `loveable`.
 
 ## Chores
 

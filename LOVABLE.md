@@ -4,7 +4,10 @@ All UI is built in Lovable as a separate app. This backend exposes an HTTP API
 for it to call. Lovable cannot import from `lib/` — it is a different codebase on
 a different domain — so everything it needs goes through `/api`.
 
-**API base:** `https://commit-store-xuav.vercel.app`
+**API base (this repo, on Vercel):** `https://commit-store-xuav.vercel.app`
+**Frontend (Lovable):** `https://commit-store.lovable.app`
+
+The two are different hosts, which is why CORS and `APP_ORIGIN` both exist.
 
 CORS is handled in `proxy.ts`. If a call is blocked, add the exact origin from
 the browser console to `CORS_ALLOWED_ORIGINS` in Vercel and redeploy.
