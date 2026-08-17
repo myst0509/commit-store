@@ -557,6 +557,19 @@ Two things the frontend has to know and cannot infer:
 
 Acknowledged and deliberately deferred. Record status if asked; do not prompt.
 
+**Decided 2026-08-16: finish the frontend first.** Everything to do with live
+keys, webhooks and real money is parked until the end of the project, on the
+reasoning that keys and endpoints will change anyway by the time they matter.
+Until then the work is building the four remaining screens correctly. Do not
+re-raise the items below, or the Stripe webhook endpoint, as things to do now —
+they are known, and their turn comes last.
+
+- **Stripe webhook endpoint** not created; `STRIPE_WEBHOOK_SECRET` is still a
+  placeholder, so webhooks are rejected in production. Parked by decision.
+- **A successful transfer through `runPayouts()`** — the `--keep` procedure
+  above. Parked; Connect itself is confirmed working.
+- **The first real Printful order**, and live checkout. Parked, and gated.
+
 - **Printful resale certificate.** Worth ~42c per order. Takes time to file.
 - **Merchant-of-record question with Printful.** The largest unhedged
   assumption in the project, and the user is aware of it.
