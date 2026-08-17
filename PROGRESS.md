@@ -537,15 +537,12 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Products | **TODO** — next; prompt written in LOVABLE.md |
 | Drops | **TODO** |
 | Order detail | **TODO** |
-| Payouts | **TODO** — unblocked 2026-08-16; prompt written in LOVABLE.md |
+| Payouts | **DONE** — built and loading (verified off-campus 2026-08-16) |
 
 Order matters: the launch path's `price` step creates a product with nowhere to
 view it, and its `drop_date` step needs a `productId` it cannot currently pick.
 
-### Signup created no store — found 2026-08-16
-
-Every screen except Designs hung on an infinite spinner. The cause was not in
-Lovable.
+### Signup created no store — found and fixed 2026-08-16
 
 `create_store` (`lib/launch/actions.ts:81`) says *"the store row itself is
 created before this by signup; this names it"* and only runs an `UPDATE`. There
@@ -554,20 +551,38 @@ store, and `requireSeller` (`lib/auth/session.ts:71`) 404s without one. That
 includes `/api/launch`, whose first step is the thing that was supposed to
 create the store. Circular, and it blocked every seller who ever signed up.
 
-Fixed by `0005_store_on_signup.sql` — **written, not yet applied**. The one
-affected account was patched by hand in the meantime.
+Fixed by `0005_store_on_signup.sql`, applied 2026-08-16.
 
-Two things this exposed on the frontend side, both still open:
+### The campus network, not the code — 2026-08-16
 
-- **A non-401 error renders as an infinite spinner.** The API returned a clean
-  `404 {"error":"You do not have a store yet"}` and the screens showed a
-  loading state forever. They appear to handle only 200 and 401. Every backend
-  error currently reads as a hang rather than the message it sent.
-- **Designs kept working when everything else 404ed**, which it should not have
-  — it calls `requireSeller` too. Unconfirmed, but the likely explanation is
-  that it queries Supabase directly, which is the exact default LOVABLE.md
-  warns about. Check the Network tab: requests to `supabase.co` rather than the
-  API would confirm it.
+Separately and at the same time, every screen appeared to hang on an infinite
+spinner. **That was the UCR network, and it cost a debugging session.** Measured
+from the published frontend in a real browser:
+
+| Host | Result |
+|---|---|
+| `commit-store-xuav.vercel.app` | **no response, aborted at 6s** |
+| `aktehepmvbaxuidpdzjh.supabase.co` | 401 in 163ms |
+| `commit-store.lovable.app` | 200 in 278ms |
+
+The API host **hangs rather than failing**, so the frontend never gets an error
+to display — it just waits. Verified fixed by loading the same app on cellular:
+everything works.
+
+Two things wrongly suspected during that session, recorded so they are not
+chased again:
+
+- **The frontend does NOT mishandle non-401 errors.** That was inferred from
+  spinners which were actually unanswered requests. No evidence either way.
+- **Designs was NOT wired directly to Supabase.** It only looked special
+  because its upload goes browser → Supabase Storage by design
+  (`app/api/designs/route.ts:11`), and Supabase was reachable while the API was
+  not.
+
+**Do not debug the frontend from campus.** Confirm against cellular before
+concluding anything is broken. This also raises the priority of a real domain:
+`*.vercel.app` is unreachable here, and one is needed for seller subdomains
+anyway.
 
 Two things the frontend has to know and cannot infer:
 
@@ -592,11 +607,8 @@ Two things the frontend has to know and cannot infer:
 - [x] **`0004_vendor_safe_idempotency_key.sql` applied** 2026-08-11 and verified:
       the column default now produces a 32-character key, and a 36-character
       value is rejected by the constraint.
-- [ ] **Apply `0005_store_on_signup.sql`.** Written 2026-08-16, NOT yet applied.
-      Paste it into the Supabase SQL editor — there is no migration runner in
-      `package.json`. Until it is applied, every new signup is broken (see the
-      frontend section). The affected account was patched by hand on
-      2026-08-16, so the migration's backfill is currently a no-op.
+- [x] **`0005_store_on_signup.sql` applied** 2026-08-16. New signups now get a
+      draft store, which nothing previously created.
 - [ ] **Re-enable "Confirm email" in Supabase Auth before real sellers exist.**
       Turned off 2026-08-16 for development: Supabase's built-in auth mail is
       free but heavily rate-limited and not intended for production, so
