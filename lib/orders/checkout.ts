@@ -1,3 +1,4 @@
+import { UserError } from "@/lib/errors";
 import { getProvider } from "@/lib/fulfillment";
 import type { ShippingAddress } from "@/lib/fulfillment/types";
 import {
@@ -52,16 +53,16 @@ export async function createCheckout(input: {
 }): Promise<CheckoutQuote> {
   const sb = serviceClient();
 
-  if (!input.lines.length) throw new Error("Cart is empty");
+  if (!input.lines.length) throw new UserError("Cart is empty");
 
   const units = input.lines.reduce((n, l) => n + l.quantity, 0);
   if (units > MAX_UNITS_PER_ORDER) {
     // PROJECT.md's fraud section: card testing and laundering both like large
     // orders on brand-new stores.
-    throw new Error(`Orders are limited to ${MAX_UNITS_PER_ORDER} units`);
+    throw new UserError(`Orders are limited to ${MAX_UNITS_PER_ORDER} units`);
   }
   if (input.lines.some((l) => !Number.isInteger(l.quantity) || l.quantity < 1)) {
-    throw new Error("Quantities must be whole numbers of at least one");
+    throw new UserError("Quantities must be whole numbers of at least one");
   }
 
   // Authoritative prices. Note the store filter: a variant id from another
@@ -82,14 +83,14 @@ export async function createCheckout(input: {
 
   for (const line of input.lines) {
     const v = byId.get(line.productVariantId);
-    if (!v) throw new Error("That item is not available from this store");
+    if (!v) throw new UserError("That item is not available from this store");
 
     const product = first(v.products);
     if (!v.is_enabled || product?.status !== "published") {
-      throw new Error("That item is no longer for sale");
+      throw new UserError("That item is no longer for sale");
     }
     if (!first(v.catalog_variants)?.in_stock) {
-      throw new Error(`${first(v.catalog_variants)?.color} ${first(v.catalog_variants)?.size} is out of stock`);
+      throw new UserError(`${first(v.catalog_variants)?.color} ${first(v.catalog_variants)?.size} is out of stock`);
     }
   }
 
@@ -118,7 +119,7 @@ export async function createCheckout(input: {
   });
 
   const standard = quotes.find((q) => q.speed === "standard") ?? quotes[0];
-  if (!standard) throw new Error("We cannot ship to that address");
+  if (!standard) throw new UserError("We cannot ship to that address");
 
   const itemsRetailCents = lines.reduce((n, l) => n + l.unitRetailCents * l.quantity, 0);
   const platformFeeCents = lines.reduce((n, l) => n + l.unitPlatformFeeCents * l.quantity, 0);

@@ -1,5 +1,7 @@
 import sharp from "sharp";
 
+import { UserError } from "@/lib/errors";
+
 /**
  * Artwork validation against the vendor's real print areas.
  *
@@ -56,7 +58,7 @@ export async function inspectArtwork(input: Buffer): Promise<ArtworkFacts> {
   const meta = await sharp(input).metadata();
 
   if (!meta.width || !meta.height) {
-    throw new Error("That file is not an image we can read");
+    throw new UserError("That file is not an image we can read");
   }
 
   return {

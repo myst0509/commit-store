@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { UserError } from "@/lib/errors";
 import { serviceClient } from "@/lib/supabase/client";
 
 /**
@@ -88,17 +89,12 @@ export function errorResponse(e: unknown): Response {
     return Response.json({ error: e.message }, { status: e.status });
   }
 
-  const message = e instanceof Error ? e.message : String(e);
+  // Written for the caller by the code that threw it, so passed through.
+  if (e instanceof UserError) {
+    return Response.json({ error: e.message }, { status: 400 });
+  }
 
-  // Validation failures from the domain layer are the caller's to fix and are
-  // written to be read by a person, so they are passed through. Anything
-  // unexpected is not — a stack trace or a database error is our problem.
-  const isUserFacing =
-    /required|must|cannot|invalid|not available|no longer|out of stock|too small|blocked by|already taken|would lose money/i
-      .test(message);
-
-  return Response.json(
-    { error: isUserFacing ? message : "Something went wrong" },
-    { status: isUserFacing ? 400 : 500 },
-  );
+  // Anything else is ours — a bug, a missing environment variable, a database
+  // error. The message may carry internals, so it does not leave the server.
+  return Response.json({ error: "Something went wrong" }, { status: 500 });
 }

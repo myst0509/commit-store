@@ -1,6 +1,7 @@
 import {
   inspectArtwork, validateAgainstPlacement, type PlacementSpec,
 } from "@/lib/design/validate";
+import { UserError } from "@/lib/errors";
 import { PLATFORM_FEE_CENTS } from "@/lib/pricing";
 import { serviceClient } from "@/lib/supabase/client";
 
@@ -80,7 +81,7 @@ const HANDLERS: Record<string, Handler> = {
   /** Day 1. The store row itself is created before this by signup; this names it. */
   async create_store(storeId, input) {
     const name = String(input.name ?? "").trim();
-    if (!name) throw new Error("A brand name is required");
+    if (!name) throw new UserError("A brand name is required");
 
     const sb = serviceClient();
     const subdomain = toSubdomain(name);
@@ -89,7 +90,7 @@ const HANDLERS: Record<string, Handler> = {
     // by silently appending numbers to the brand they just chose.
     const { data: taken } = await sb
       .from("stores").select("id").eq("subdomain", subdomain).neq("id", storeId).maybeSingle();
-    if (taken) throw new Error(`"${subdomain}" is already taken — try another name`);
+    if (taken) throw new UserError(`"${subdomain}" is already taken — try another name`);
 
     await sb.from("stores").update({ name, subdomain }).eq("id", storeId);
     return { name, subdomain };
@@ -100,7 +101,7 @@ const HANDLERS: Record<string, Handler> = {
     const sb = serviceClient();
     const { storagePath, publicUrl, filename, widthPx, heightPx } = input as Record<string, string & number>;
 
-    if (!publicUrl || !storagePath) throw new Error("Upload the file before recording it");
+    if (!publicUrl || !storagePath) throw new UserError("Upload the file before recording it");
 
     // Inspect the real bytes rather than trusting whatever the client reported.
     // A blank has not been chosen yet at this point in the sequence, so this
@@ -110,15 +111,15 @@ const HANDLERS: Record<string, Handler> = {
     let facts;
     try {
       const res = await fetch(String(publicUrl));
-      if (!res.ok) throw new Error(`could not read the uploaded file (HTTP ${res.status})`);
+      if (!res.ok) throw new UserError(`could not read the uploaded file (HTTP ${res.status})`);
       facts = await inspectArtwork(Buffer.from(await res.arrayBuffer()));
     } catch (e) {
-      throw new Error(`Could not read that image: ${e instanceof Error ? e.message : e}`);
+      throw new UserError(`Could not read that image: ${e instanceof Error ? e.message : e}`);
     }
 
     const check = validateAgainstPlacement(facts, REFERENCE_FRONT);
     const blocking = check.findings.filter((f) => f.code === "far_too_small");
-    if (blocking.length) throw new Error(blocking[0].message);
+    if (blocking.length) throw new UserError(blocking[0].message);
 
     // No unique constraint on (store_id, storage_path), so upsert cannot be used.
     // Checked explicitly instead, which keeps a double-clicked button from
@@ -160,7 +161,7 @@ const HANDLERS: Record<string, Handler> = {
   async select_blank(_storeId, input) {
     const sb = serviceClient();
     const blankId = String(input.blankId ?? "");
-    if (!blankId) throw new Error("Choose a blank");
+    if (!blankId) throw new UserError("Choose a blank");
 
     const { data, error } = await sb
       .from("catalog_blanks")
@@ -168,8 +169,8 @@ const HANDLERS: Record<string, Handler> = {
       .eq("id", blankId)
       .single();
 
-    if (error || !data) throw new Error("That blank is not in the catalog");
-    if (!data.is_enabled) throw new Error("That blank is not currently offered");
+    if (error || !data) throw new UserError("That blank is not in the catalog");
+    if (!data.is_enabled) throw new UserError("That blank is not currently offered");
 
     return { blankId: data.id, blank: `${data.brand} ${data.model}`.trim() };
   },
@@ -187,9 +188,9 @@ const HANDLERS: Record<string, Handler> = {
     const retailCents = Number(input.retailPriceCents);
     const productName = String(input.name ?? "Untitled");
 
-    if (!blankId) throw new Error("Choose a blank first");
+    if (!blankId) throw new UserError("Choose a blank first");
     if (!Number.isInteger(retailCents) || retailCents <= 0) {
-      throw new Error("Price must be a whole number of cents");
+      throw new UserError("Price must be a whole number of cents");
     }
 
     const { data: variants, error: vErr } = await sb
@@ -198,12 +199,12 @@ const HANDLERS: Record<string, Handler> = {
       .eq("blank_id", blankId)
       .eq("in_stock", true);
 
-    if (vErr || !variants?.length) throw new Error("That blank has no available variants");
+    if (vErr || !variants?.length) throw new UserError("That blank has no available variants");
 
     const cheapest = Math.min(...variants.map((v) => v.base_cost_cents));
     const unitCost = cheapest + PLATFORM_FEE_CENTS;
     if (retailCents < unitCost) {
-      throw new Error(
+      throw new UserError(
         `At $${(retailCents / 100).toFixed(2)} you would lose money — ` +
         `this garment costs you $${(unitCost / 100).toFixed(2)}`,
       );
@@ -256,7 +257,7 @@ const HANDLERS: Record<string, Handler> = {
     // sale with a per-account cap, a global budget and a kill switch — none of
     // which exist yet. Wiring a button to "spend money" before those do is how
     // a free-tier feature becomes an unbounded bill.
-    throw new Error(
+    throw new UserError(
       "Sample ordering is not built yet: it needs the subsidy caps and kill " +
       "switch from PROJECT.md's cost discipline section, plus a payment method.",
     );
@@ -269,11 +270,11 @@ const HANDLERS: Record<string, Handler> = {
     const closesAt = String(input.closesAt ?? "");
     const threshold = input.thresholdUnits ? Number(input.thresholdUnits) : 25;
 
-    if (!productId) throw new Error("Choose which product is dropping");
+    if (!productId) throw new UserError("Choose which product is dropping");
     if (!closesAt || Number.isNaN(Date.parse(closesAt))) {
-      throw new Error("Pick a closing date");
+      throw new UserError("Pick a closing date");
     }
-    if (Date.parse(closesAt) <= Date.now()) throw new Error("The closing date must be in the future");
+    if (Date.parse(closesAt) <= Date.now()) throw new UserError("The closing date must be in the future");
 
     const { data: existing } = await sb
       .from("drops").select("id").eq("product_id", productId).eq("status", "open").maybeSingle();
@@ -316,7 +317,7 @@ const HANDLERS: Record<string, Handler> = {
     const { data: products } = await sb
       .from("products").select("id").eq("store_id", storeId).eq("status", "draft");
 
-    if (!products?.length) throw new Error("There is nothing to sell yet");
+    if (!products?.length) throw new UserError("There is nothing to sell yet");
 
     await sb.from("products")
       .update({ status: "published" })
@@ -375,7 +376,7 @@ export function toSubdomain(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 63);
-  if (s.length < 3) throw new Error("Brand name is too short for a web address");
+  if (s.length < 3) throw new UserError("Brand name is too short for a web address");
   return s;
 }
 
