@@ -47,6 +47,7 @@ Development**. Values come from your local `.env.local` unless noted.
 | `CRON_SECRET` | copy | **without it the scheduled jobs return 503 and silently never run** |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | your Vercel host, e.g. `commit-store.vercel.app` | see the note on storefronts |
 | `CORS_ALLOWED_ORIGINS` | your Lovable preview origin | e.g. `https://*.lovable.app` |
+| `APP_ORIGIN` | your **published** Lovable origin, e.g. `https://commit-store.lovable.app` | exact host, no wildcard — Stripe onboarding returns here |
 | `FULFILLMENT_LIVE` | `false` | **leave false** until a real garment has been made |
 
 `FULFILLMENT_LIVE=false` is the one that stops a deployed app ordering real

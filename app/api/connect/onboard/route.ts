@@ -40,7 +40,9 @@ export async function POST(req: Request): Promise<Response> {
       returnUrl?: string; refreshUrl?: string;
     };
 
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://app.localhost:3000";
+    // Server-only, so deliberately not NEXT_PUBLIC_: that prefix would inline
+    // the value into the browser bundle and pin it at build time.
+    const base = process.env.APP_ORIGIN ?? "http://app.localhost:3000";
 
     // Only our own URLs. An attacker-supplied return_url would send a seller
     // back from Stripe onto a page of someone else's choosing.

@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-11 · 25 commits · 96 unit tests + 50 integration checks
+**Last updated:** 2026-08-16 · 25 commits · 96 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -470,6 +470,37 @@ Still outstanding:
 **Campus network note:** UC Riverside's network resets connections to
 `*.vercel.app`, so the deployment is unreachable from campus. It works from
 other networks. Local development on `localhost:3000` is unaffected.
+
+## Frontend (Lovable) — PARTIAL
+
+Built in a separate Lovable app against `/api`. Calm paper-and-green design,
+unauthenticated visits redirect to sign-in, server error messages shown as-is.
+
+| Screen | Status |
+|---|---|
+| Auth | **DONE** |
+| Launch path | **DONE** |
+| Designs | **DONE** |
+| Dashboard home | **DONE** |
+| Products | **TODO** — next; prompt written in LOVABLE.md |
+| Drops | **TODO** |
+| Order detail | **TODO** |
+| Payouts | **BLOCKED** — Connect not enabled, and `APP_ORIGIN` unset |
+
+Order matters: the launch path's `price` step creates a product with nowhere to
+view it, and its `drop_date` step needs a `productId` it cannot currently pick.
+
+Two things the frontend has to know and cannot infer:
+
+- **There are no list endpoints** except `/api/drops`. Products and orders lists
+  come out of `/api/dashboard`; only detail routes are per-id.
+- **`APP_ORIGIN` must be set in Vercel to the Lovable app origin** before the
+  payouts screen is built. `POST /api/connect/onboard` only accepts a
+  `returnUrl` starting with that value and otherwise falls back to
+  `http://app.localhost:3000`, stranding a seller returning from Stripe.
+  Renamed from `NEXT_PUBLIC_APP_URL` on 2026-08-16 — it is read server-side
+  only, so the prefix would have inlined it into the client bundle and pinned
+  it at build time.
 
 ## Chores
 

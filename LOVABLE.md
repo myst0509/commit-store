@@ -112,25 +112,156 @@ DO NOT
 
 ## Follow-up prompts, one screen at a time
 
-**Products** — `GET /api/products/{id}`, `PATCH /api/products/{id}` with
-`{ name?, description?, status?, retailPriceCents? }`. Repricing below cost
-returns 400 with the real cost named; show that message.
+Built and live: **auth**, **launch path**, **designs**, **dashboard home**.
 
-**Designs** — `POST /api/designs/upload-url` with `{ filename }` returns
+Remaining, in this order. The order is not arbitrary — the launch path's `price`
+step creates a product with nowhere to view it, and its `drop_date` step needs a
+`productId` it cannot currently pick. Payouts is last because it is the only
+screen that cannot be verified today: Connect is not enabled on the Stripe
+account.
+
+### There are no list endpoints
+
+Only `/api/drops` returns a collection. There is no `GET /api/products` and no
+`GET /api/orders` — Lovable will assume both exist and get a 404. Lists come
+from `/api/dashboard`:
+
+- products list → `dashboard.products[]`
+- orders list → `dashboard.sales.recent[]` (most recent 25, no pagination)
+
+Detail routes are per-id only.
+
+### 1. Products — NEXT
+
+```
+Add a Products screen.
+
+The product LIST comes from GET /api/dashboard -> products[]. There is no
+GET /api/products endpoint; do not call one.
+  { id, name, slug, status, variantCount, priceCents, unitCostCents }
+priceCents and unitCostCents are the LOWEST across enabled variants, and are
+null when no variant is enabled. status is "draft" | "published" | "archived".
+
+Clicking one opens the detail: GET /api/products/{id}
+  { id, name, slug, description, status, decoration,
+    blank: "Bella + Canvas 3001", imageUrl,
+    variants: [ { id, color, size, inStock, priceCents,
+                  unitCostCents, marginCents, enabled } ],
+    artwork:  [ { placement, decoration, url } ] }
+
+Show the artwork, the blank it prints on, and the variants grouped by colour
+with sizes across. unitCostCents is what the garment costs the seller and
+marginCents is what they keep per unit — label them "your cost" and "you keep".
+Do not sum, average or recompute any of these; render them as sent.
+
+Editing is PATCH /api/products/{id} with any of
+  { name?, description?, status?, retailPriceCents? }
+It returns the same shape as GET, so use the response to refresh in place.
+
+retailPriceCents applies to EVERY variant at once — one price per product, not
+per size. Say so next to the field. If the price is below cost the server
+returns 400 with a message that names the real cost, e.g. "At $9.00 you would
+lose money — this garment costs you $16.86". Show that message verbatim.
+
+Publishing is the status field: draft -> published makes it live on the
+storefront. Make that a deliberate, clearly-labelled action, not a toggle that
+fires on a stray click.
+
+Empty state: no products yet -> point them back to the launch path, since that
+is what creates the first one.
+```
+
+### 2. Drops
+
+```
+Add a Drops screen.
+
+GET /api/drops
+  { drops: [ { id, product: { id, name, slug }, status,
+               thresholdUnits, reservedUnits, unitsRemaining,
+               percentToThreshold, opensAt, closesAt, resolvedAt } ] }
+
+A drop is how a product launches: customers reserve, nobody is charged, and
+production only starts once thresholdUnits is reached. Below the threshold the
+holds are released and no charge ever appears. Say that in plain words on the
+screen — it is the thing sellers most need to understand and the reason they
+front no inventory cost.
+
+Show each drop as a progress bar of percentToThreshold with
+"reservedUnits of thresholdUnits reserved" and unitsRemaining to go, plus the
+closing date. Never write "net", "capture", "authorisation" or "threshold" as
+jargon — "X more to go" and "closes in 6 days".
+
+POST /api/drops { productId, closesAt (ISO), thresholdUnits }
+Pick productId from GET /api/dashboard -> products[]. thresholdUnits defaults
+to 25 if omitted. closesAt must be in the future.
+
+There can only be one open drop per product: posting again for a product that
+already has one UPDATES it and returns { id, updated: true, thresholdUnits }
+instead of { id, created: true, ... } with a 201. Reflect which happened.
+
+Validation errors come back as 400 with a written message ("Pick a closing
+date", "The closing date must be in the future"). Show them as sent.
+```
+
+### 3. Order detail
+
+```
+Make the recent orders on the dashboard clickable through to a detail screen.
+
+GET /api/orders/{id}
+  { id, number, status, paymentStatus, isReservation,
+    customer: { name, email, address },
+    items: [ { name, color, size, quantity, unitPriceCents } ],
+    totals: { goodsCents, shippingCents, customerPaidCents,
+              yourEarningsCents },
+    earnings: { credited: bool, availableAt: ISO | null },
+    shipment: { status, carrier, trackingNumber, trackingUrl,
+                estimatedDelivery, submittedAt } | null,
+    timeline: { placedAt, paidAt, deliveredAt, cancelledAt } }
+
+The customer address is there so the seller can answer "where is my order"
+questions — show it, but not as the loudest thing on the page.
+
+shipment is null until we submit the order for manufacturing; show "not made
+yet" rather than an empty tracking box. When trackingUrl exists, link it.
+
+earnings.credited false means this sale has not been added to their earnings
+yet. availableAt is when it becomes payable — 14 days after delivery. Phrase it
+as "clears on <date>", never "net 14".
+
+isReservation true means this is a drop reservation: the customer has NOT been
+charged, only authorised. Label it clearly and do not describe it as a sale.
+
+Render totals exactly as sent. Do not derive yourEarningsCents from the items.
+```
+
+### 4. Payouts — do not build yet
+
+Blocked twice over, both outside Lovable:
+
+- Connect is not enabled on the Stripe account, so `GET /api/connect/onboard`
+  cannot return a real status.
+- `POST /api/connect/onboard` only accepts a `returnUrl` that starts with
+  `APP_ORIGIN`, which currently defaults to `http://app.localhost:3000`. Set it
+  in Vercel to the Lovable app origin first, or a seller finishing Stripe
+  onboarding gets redirected to localhost and is stranded.
+
+  Use the **published** Lovable origin, not the in-editor preview one, and note
+  that unlike `CORS_ALLOWED_ORIGINS` this is a plain `startsWith` — a
+  `https://*.lovable.app` wildcard matches nothing here.
+
+When both are cleared: `GET /api/connect/onboard` returns
+`{ connected, ready, detailsSubmitted, outstanding[], disabledReason }`;
+`POST` returns `{ url }` to redirect to Stripe's hosted flow. `outstanding` is
+Stripe's own requirement codes — show them so a stalled seller can see what is
+missing.
+
+**Designs** (built) — `POST /api/designs/upload-url` with `{ filename }` returns
 `{ uploadUrl, token, storagePath }`. Upload the file to `uploadUrl` directly,
 then `POST /api/designs` with `{ storagePath, filename, blankId? }`. The
 response has `usableOn` (which placements, and the largest print size on each)
 and `warnings`. `GET /api/designs` lists them with a `review` status.
-
-**Orders** — `GET /api/orders/{id}` returns items, customer, totals including
-`yourEarningsCents`, tracking, and `earnings.availableAt`.
-
-**Drops** — `GET /api/drops` returns `reservedUnits`, `thresholdUnits`,
-`percentToThreshold`. `POST /api/drops` with
-`{ productId, closesAt, thresholdUnits }`.
-
-**Payouts** — `GET /api/connect/onboard` for status and outstanding
-requirements; `POST` returns `{ url }` to redirect to Stripe's hosted onboarding.
 
 ---
 
@@ -140,6 +271,12 @@ It defaults to **querying Supabase tables directly**. Do not let it. Vendor cost
 and the base/fee split are hidden by column grants (migration 0002), so a direct
 query hits permission errors rather than returning data — and the fix it will
 reach for is `GRANT SELECT`, which republishes the cost basis.
+
+`store.url` from `/api/dashboard` is
+`https://<subdomain>.ourdomain.com` — a placeholder. No real domain is
+configured, and `*.vercel.app` cannot be wildcarded, so seller storefronts have
+nowhere to live yet. Do not make "view your store" a prominent link until a
+domain exists; it goes nowhere.
 
 It defaults to **computing totals and margins in React**. Every number it needs
 is already in the response. Prices computed client-side are a fraud vector, and
