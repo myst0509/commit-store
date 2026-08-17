@@ -238,6 +238,17 @@ unrecognized labels visible rather than dropping them.
 
 **`PRINTFUL_WEBHOOK_SECRET` generated** — 32 random bytes, in `.env.local`.
 
+**Seller-facing errors use `UserError` (`lib/errors.ts`).** Throw it when the
+message is written for the person who caused it; `errorResponse` returns it
+verbatim as a 400. Throw a plain `Error` for anything that is ours — a bug, a
+missing env var, a vendor fault — and it becomes a generic 500.
+
+This replaced a keyword regex that guessed from the message text, which failed
+open: naming a brand "XO" answered "Something went wrong" because the list held
+"too small" and not "too short". Fourteen good messages were swallowed the same
+way. **Do not reintroduce message-sniffing** — `tests/errors.test.ts` fails if
+someone does.
+
 ## 5a. Order pipeline — PARTIAL (vendor leg done, payment leg not started)
 
 `lib/orders/pipeline.ts` — order → vendor submission, service-role only.
