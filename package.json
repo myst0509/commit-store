@@ -22,7 +22,8 @@
     "payout:test": "tsx scripts/payout-test.ts",
     "drop:test": "tsx scripts/drop-test.ts",
     "mockup:sample": "tsx scripts/mockup-sample.ts",
-    "api:test": "tsx scripts/api-test.ts"
+    "api:test": "tsx scripts/api-test.ts",
+    "apliiq:probe": "tsx scripts/apliiq-probe.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",

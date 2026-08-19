@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-16 · 25 commits · 96 unit tests + 50 integration checks
+**Last updated:** 2026-08-19 · 113 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -160,6 +160,7 @@ step arrived rather than up front.
 | `npm run payout:test` | Connect onboarding and the payout run |
 | `npm run drop:test` | reservations, capture at threshold, release when short |
 | `npm run launch:walkthrough` | drives all 8 launch steps end to end |
+| `npm run apliiq:probe` | one signed Apliiq request; prints a redacted sample |
 
 Storefront theming is via CSS custom properties in `app/globals.css`, injected
 per-store from `stores.theme`. One compiled stylesheet serves every seller; there
@@ -699,5 +700,9 @@ Raised deliberately rather than guessed at:
 
 - **Printful:** do their terms permit acting as merchant of record for third-party
   sellers? Unasked, and it is load-bearing for the entire business model.
-- **Apliiq:** API returns 500 on everything. Unusable until they respond.
+- **Apliiq:** ~~API returns 500 on everything.~~ **Retracted 2026-08-19.** Their auth is an
+  HMAC signature and they return 500 rather than 401 for an unsigned request, so the
+  "outage" was our unauthenticated calls. Signer written and unit-tested
+  (`lib/fulfillment/apliiq-auth.ts`, `npm run apliiq:probe`); still blocked on obtaining
+  an APP_ID and shared secret, which nothing in this project has ever had.
 - **Both:** whether any idempotency guarantee exists on order creation.

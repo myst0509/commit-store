@@ -63,5 +63,6 @@ with a codebase you can't debug.
 - **Printful:** is there a cap on stores per account? This determines whether store-per-seller
   works or whether you need a single shared store with reconciliation by external_id.
 - **Printful:** confirm their terms permit acting as merchant of record for third-party sellers.
-- **Apliiq:** the 500-on-everything fault. Their API is unusable until they respond.
+- **Apliiq:** the "500-on-everything fault" was our own unsigned requests — they use HMAC
+  auth and return 500 instead of 401. Needs an APP_ID and shared secret from their dashboard.
 - **Both:** rate limits, and whether an idempotency header is honoured on order creation.
