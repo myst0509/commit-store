@@ -698,6 +698,8 @@ Two things the frontend has to know and cannot infer:
       do not control — fine for our own test accounts, not fine live. The
       proper fix is custom SMTP (Resend/Postmark/SendGrid), which is needed
       for production anyway.
+- [x] **Apliiq credentials rotated** 2026-08-19 — the originals were pasted into
+      a chat during development. New pair verified working (`GET /v1/Product` 200).
 - [ ] Rotate the Printful token (exposed in chat during development)
 - [x] `drop table notes;` — done, Supabase starter leftover removed
 - [x] Generate `PRINTFUL_WEBHOOK_SECRET` — done, 32 random bytes in `.env.local`
