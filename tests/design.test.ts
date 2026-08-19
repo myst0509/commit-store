@@ -124,3 +124,36 @@ describe("validateAgainstBlank", () => {
     assert.deepEqual(r.usablePlacements, []);
   });
 });
+
+describe("placements with no published print area", () => {
+  // Apliiq publishes no print dimensions. Before this guard, widthIn of 0 made
+  // effectiveDpi Infinity, so Infinity < minDpi was false and ANY file passed —
+  // a missing spec silently became an unlimited one.
+  const facts = {
+    widthPx: 500, heightPx: 500, format: "png",
+    hasAlpha: true, space: "srgb", byteSize: 1024,
+  };
+
+  it("refuses rather than approving artwork it cannot check", () => {
+    const r = validateAgainstPlacement(facts, {
+      code: "front", widthIn: 0, heightIn: 0, minDpi: 0,
+    });
+    assert.equal(r.ok, false);
+    assert.equal(r.findings[0].code, "unknown_print_area");
+  });
+
+  it("refuses when only the dpi is missing", () => {
+    const r = validateAgainstPlacement(facts, {
+      code: "front", widthIn: 12, heightIn: 16, minDpi: 0,
+    });
+    assert.equal(r.ok, false);
+  });
+
+  it("leaves a fully specified placement alone", () => {
+    const r = validateAgainstPlacement(
+      { ...facts, widthPx: 3000, heightPx: 3000 },
+      { code: "front", widthIn: 12, heightIn: 16, minDpi: 150 },
+    );
+    assert.equal(r.ok, true);
+  });
+});

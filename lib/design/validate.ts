@@ -84,6 +84,27 @@ export function validateAgainstPlacement(
 ): ValidationResult {
   const findings: Finding[] = [];
 
+  // A placement with no measurements is UNKNOWN, not unlimited. Dividing by a
+  // zero width yields Infinity, which sails past the DPI check and approves any
+  // file at any size — the exact opposite of what a missing spec should mean.
+  // Apliiq publishes no print dimensions at all, so this is reachable in
+  // practice, not theoretical.
+  if (placement.widthIn <= 0 || placement.heightIn <= 0 || placement.minDpi <= 0) {
+    return {
+      ok: false,
+      facts,
+      findings: [{
+        severity: "error",
+        code: "unknown_print_area",
+        message:
+          "We do not have the print dimensions for this garment yet, so we cannot check " +
+          "your artwork will print sharply. Choose another garment for now.",
+      }],
+      maxPrintInches: { width: 0, height: 0 },
+      effectiveDpi: 0,
+    };
+  }
+
   // DPI achieved if the image is scaled to fill the print area. The binding
   // constraint is whichever axis runs out of pixels first.
   const dpiAcrossWidth = facts.widthPx / placement.widthIn;

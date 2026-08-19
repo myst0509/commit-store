@@ -88,6 +88,57 @@ Things the docs got wrong, found by calling the API (do not "fix" these back):
 - Variant `color` is **nullable** on all-over garments, despite the docs typing it
   as a string. Normalized to the label `"Default"` — see `UNNAMED_COLOR`.
 
+## 2d. Apliiq adapter — PARTIAL (catalog verified, order path unproven)
+
+`lib/fulfillment/apliiq.ts`, registered in the provider registry 2026-08-19.
+Auth in `lib/fulfillment/apliiq-auth.ts`; 27 unit tests.
+
+**Verified against the live API:**
+
+| | |
+|---|---|
+| Blanks returned | 1,521 |
+| Usable (colours + decoration + a mapped placement) | 913 |
+| Decoration methods | dtg, dtf, screen_print, embroidery, applique, sublimation |
+| Blanks with no mapped placement | 25 |
+| Variants with a bad cost | 0 |
+
+`listBlanks`, `getBlank` and `listVariants` all work end to end. Their whole
+catalog is one ~15MB response — no pagination, no per-product endpoint — so it
+is fetched once and cached per instance.
+
+**Two things their catalog does not have, and Printful does:**
+
+- **No print dimensions.** `Locations[].DesignBox` is empty across all 1,521
+  products, so `PlacementSpec` is emitted as zeroes meaning *unknown*. This
+  found a real bug: `validateAgainstPlacement` divided by that zero, got
+  `Infinity`, and `Infinity < minDpi` is false — so **every design passed**. A
+  missing spec had silently become an unlimited one. Fixed: unknown dimensions
+  now refuse with `unknown_print_area`. **Consequence: Apliiq blanks cannot
+  pass design validation until real print areas are obtained from them.**
+- **No colour hex.** `isDark` is inferred from the colour name, which is what
+  the DTG-on-darks rule runs on. Weaker than Printful's hex, and worth knowing.
+
+**Seven methods throw rather than guess.** `uploadArtwork`, `createProduct`,
+`deleteProduct`, `quoteShipping`, `estimateCost`, `cancelOrder` and
+`parseWebhook` have no published endpoint. Each throws a `FulfillmentError`
+naming what to ask Apliiq for. Guessing a path buys a silent 404 at the moment
+an order needs making.
+
+**`submitOrder` is written from their published schema and has NEVER RUN.**
+Same status as Printful's. Two impedance mismatches handled in code:
+
+- Their order `id` is an integer; ours is a uuid. Mapped through a
+  deterministic FNV-1a hash so a retry is the same number. **Our side is
+  stable; whether Apliiq rejects a repeat is undocumented**, so this is not yet
+  a real idempotency guarantee.
+- Their shipping code is `upgraded` where ours is `expedited`.
+
+**CAUTION: `routeForProduct` prefers Apliiq for private label**, and its
+`quoteShipping`/`estimateCost` throw. Nothing reaches them today because no
+product sets `privateLabel` — do not enable private-label products until those
+endpoints exist.
+
 ## 2b. Catalog cache — DONE
 
 `scripts/sync-catalog.ts`, run 2026-08-11 over categories 6, 7, 8, 9 (men's and

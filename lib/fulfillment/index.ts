@@ -11,7 +11,7 @@ import type {
   ProviderId,
 } from "./types";
 import { PrintfulProvider } from "./printful";
-// import { ApliiqProvider } from "./apliiq"; // blocked: vendor API returning 500
+import { ApliiqProvider } from "./apliiq";
 
 let registry: Map<ProviderId, FulfillmentProvider> | null = null;
 
@@ -21,9 +21,14 @@ function getRegistry(): Map<ProviderId, FulfillmentProvider> {
   registry = new Map();
   registry.set("printful", new PrintfulProvider());
 
-  // Enable once Apliiq's API is functional. The adapter should already satisfy
-  // FulfillmentProvider, so enabling it must require no changes elsewhere.
-  // registry.set("apliiq", new ApliiqProvider());
+  // Apliiq's API was never broken — see lib/fulfillment/apliiq.ts. Its catalog
+  // is verified working; its order path is not.
+  //
+  // CAUTION: routeForProduct below prefers Apliiq for private label, and its
+  // quoteShipping/estimateCost/cancelOrder throw because Apliiq does not
+  // publish those endpoints. Nothing reaches them today — no product sets
+  // privateLabel — but do not enable private-label products until they exist.
+  registry.set("apliiq", new ApliiqProvider());
 
   return registry;
 }
