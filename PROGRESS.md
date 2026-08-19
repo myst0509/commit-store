@@ -751,6 +751,12 @@ Raised deliberately rather than guessed at:
 
 ## Still unanswered by the vendors
 
+**Asked of Apliiq and awaiting reply (sent 2026-08-19):** whether one account may
+submit orders for many independent sellers with us as merchant of record; current
+rate limits on Order and Artwork, which their docs list as TBD; and whether a
+partner or volume programme exists. The first of those is the same load-bearing
+question still unasked of Printful.
+
 - **Printful:** do their terms permit acting as merchant of record for third-party
   sellers? Unasked, and it is load-bearing for the entire business model.
 - **Apliiq:** ~~API returns 500 on everything.~~ **Retracted and resolved 2026-08-19 — their
