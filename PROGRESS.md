@@ -700,9 +700,20 @@ Raised deliberately rather than guessed at:
 
 - **Printful:** do their terms permit acting as merchant of record for third-party
   sellers? Unasked, and it is load-bearing for the entire business model.
-- **Apliiq:** ~~API returns 500 on everything.~~ **Retracted 2026-08-19.** Their auth is an
-  HMAC signature and they return 500 rather than 401 for an unsigned request, so the
-  "outage" was our unauthenticated calls. Signer written and unit-tested
-  (`lib/fulfillment/apliiq-auth.ts`, `npm run apliiq:probe`); still blocked on obtaining
-  an APP_ID and shared secret, which nothing in this project has ever had.
+- **Apliiq:** ~~API returns 500 on everything.~~ **Retracted and resolved 2026-08-19 — their
+  API works.** Auth is an HMAC signature, and they return 500 rather than 401 for an unsigned
+  request, so the "outage" was our own unauthenticated calls. Signed requests verified live:
+
+  | Path | |
+  |---|---|
+  | `GET /v1/Order` | **200** |
+  | `GET /v1/Product` | **200**, real catalog data |
+  | `GET /api/Order` | 200 — appears to alias `/v1` |
+  | `GET /v1/Fulfillment`, `/v1/Warehouse` | 404 — not those paths |
+
+  Their docs are ambiguous about whether the signature is base64 or a hex digest (the
+  algorithm says base64, the C# helper is named `...HexDigest`). **base64 is correct** —
+  it returns 200. Paths are PascalCase and singular; `/orders` 404s.
+
+  Adapter still unwritten. Only authentication is proven.
 - **Both:** whether any idempotency guarantee exists on order creation.

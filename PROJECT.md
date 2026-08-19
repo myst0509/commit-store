@@ -65,13 +65,15 @@ Primary: **Printful**. Working API, good reliability.
 Secondary: **Apliiq**. Better private-label finishing (neck tags, woven labels, embroidery) which
 is core to our positioning.
 
-CORRECTED Aug 2026: their API was written off as "500 on everything, a server-side fault". That
-was wrong. Apliiq authenticates with an **HMAC signature**, not a bearer token, and their API
-answers a missing or malformed signature with a 500 rather than a 401 — so "not authenticated"
-and "vendor is down" are indistinguishable from outside. No Apliiq credentials were ever
-configured in this project and no code ever called them, so every request that produced a 500
-was unsigned. Their support confirmed the requests lacked authentication. See
-`lib/fulfillment/apliiq-auth.ts`.
+RESOLVED Aug 2026 — **their API works.** It was written off as "500 on everything, a server-side
+fault". That was wrong. Apliiq authenticates with an **HMAC signature**, not a bearer token, and
+returns a 500 rather than a 401 for an unsigned request — so "not authenticated" and "vendor is
+down" are indistinguishable from outside. No credentials were ever configured here and no code
+ever called them, so every 500 came from an unsigned request.
+
+Verified 2026-08-19 with a signed request: `GET /v1/Order` and `GET /v1/Product` both return
+**200** with real catalog data. Signer in `lib/fulfillment/apliiq-auth.ts`, probe via
+`npm run apliiq:probe`. The adapter itself is still unwritten — only auth is proven.
 
 **Everything vendor-specific goes behind the `FulfillmentProvider` interface in
 `lib/fulfillment/types.ts`. No vendor SDK, endpoint, or field name may appear anywhere else in the
