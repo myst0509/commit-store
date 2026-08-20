@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-19 · 113 unit tests + 50 integration checks
+**Last updated:** 2026-08-19 · 155 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -601,6 +601,7 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Drops | **DONE** |
 | Order detail | **DONE** |
 | Payouts | **DONE** |
+| Store settings | **TODO** — endpoint built 2026-08-19, prompt in LOVABLE.md |
 
 All eight built as of 2026-08-16. Routes, verified live:
 
@@ -610,6 +611,20 @@ All eight built as of 2026-08-16. Routes, verified live:
 | `/launch` `/dashboard` `/designs` `/products` `/drops` | list screens |
 | `/products/:id` `/orders/:id` | detail; no bare `/orders` index |
 | `/settings/payouts` | **must stay at this path** — it is where Stripe returns |
+| `/settings` | store settings, not yet built |
+
+**`/api/store` added 2026-08-19.** `GET` and `PATCH` for brand name, web
+address and theme. Until it existed a store could only ever be named once, by
+the launch path's first step, and `stores.theme` was read by the storefront and
+written by nothing at all — so a seller had no way to change anything about
+their own store.
+
+The theme filter is now exported from `lib/store/resolve.ts` and imported by
+`lib/store/settings.ts` rather than copied. When the write rule and the render
+rule are two copies of one expression they drift, and the symptom is a seller
+saving a colour, being told it worked, and seeing nothing on their storefront
+with no error anywhere. `PATCH` replaces the theme rather than merging, which is
+what makes "remove this colour" expressible.
 
 API verified from the published origin the same day: all eight endpoints answer
 `401 {"error":"Sign in to continue"}` unauthenticated, the CORS preflight

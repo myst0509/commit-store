@@ -337,6 +337,73 @@ If the screen ever does need to live elsewhere, the URL must start with exactly
 the `APP_ORIGIN` value — a `https://*.lovable.app` wildcard matches nothing
 here, unlike `CORS_ALLOWED_ORIGINS`.
 
+### 5. Store settings
+
+Added 2026-08-19. This is the first screen for which no API existed before: a
+store could only ever be named once, by the launch path, and `stores.theme` was
+read by the storefront and written by nothing at all.
+
+```
+Add a Store settings screen at /settings.
+
+GET /api/store
+  { name, subdomain, status, url, customDomain,
+    theme: { bg?, fg?, accent?, muted?, radius? },
+    hasSold: boolean }
+
+PATCH /api/store with any of { name, subdomain, theme }
+It returns the same shape as GET, so use the response to refresh in place.
+
+THREE SECTIONS.
+
+1. BRAND NAME
+   Free text, up to 60 characters. This is what customers see. It does NOT
+   have to match the web address, and short names like "XO" are fine here.
+
+2. WEB ADDRESS
+   The subdomain their storefront lives at. Show the full url from the
+   response so it is obvious what it becomes.
+
+   Lowercase letters, numbers and hyphens only, 3 to 63 characters, and it
+   cannot start or end with a hyphen. Do not enforce this yourself beyond
+   basic hints — send it and show the server's message, which names the exact
+   rule that was broken.
+
+   If hasSold is true, warn before saving: customers already have the old
+   address and any link they have will stop working. Make them confirm.
+
+3. APPEARANCE
+   Five optional values, all CSS colours except the last:
+     bg      page background
+     fg      text colour
+     accent  buttons and links
+     muted   secondary text
+     radius  corner rounding, e.g. "12px" or "0.75rem"
+
+   Use real colour pickers, not free-text hex fields, and show a small live
+   preview of a storefront card using the chosen values so the seller can see
+   what they are choosing.
+
+   Send the WHOLE theme object every time. PATCH replaces it rather than
+   merging, which is what makes "remove this colour" expressible. Send an
+   empty string for a value the seller cleared.
+
+RULES
+- Every field is optional. Send only what changed; sending nothing returns
+  400 "Nothing to change".
+- Errors come back as { error } with a message written for a person. Show it
+  as sent. A taken web address, a reserved one like "app", and an unusable
+  colour all have their own wording.
+- Do not validate colours in the frontend beyond what the picker gives you.
+  The server accepts exactly what the storefront can render, and the two use
+  one shared rule.
+
+EMPTY / FIRST RUN
+A store created at signup is named "My brand" with a generated web address
+like store-e78523d2. Treat that as unset: prompt them to choose both, since
+those placeholders are what a customer would otherwise see.
+```
+
 **Designs** (built) — `POST /api/designs/upload-url` with `{ filename }` returns
 `{ uploadUrl, token, storagePath }`. Upload the file to `uploadUrl` directly,
 then `POST /api/designs` with `{ storagePath, filename, blankId? }`. The

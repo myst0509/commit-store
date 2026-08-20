@@ -107,10 +107,15 @@ export const resolveStore = cache(async (rawHost: string): Promise<ResolvedStore
  * emitted — `theme` is seller-controlled jsonb, and spreading it into a style
  * attribute unfiltered would be a CSS injection.
  */
+export const THEME_VALUE_RE = /^[#a-zA-Z0-9(),.%\s-]{1,64}$/;
+
 export function themeStyle(theme: StoreTheme): React.CSSProperties {
   const vars: Record<string, string> = {};
-  const safe = (v: string | undefined) =>
-    v && /^[#a-zA-Z0-9(),.%\s-]{1,64}$/.test(v) ? v : undefined;
+  // Exported and shared with lib/store/settings.ts on purpose. When the write
+  // rule and the render rule are two copies of one expression, they drift, and
+  // the symptom is a seller saving a colour, being told it worked, and seeing
+  // nothing on their storefront with no error anywhere.
+  const safe = (v: string | undefined) => (v && THEME_VALUE_RE.test(v) ? v : undefined);
 
   if (safe(theme.bg)) vars["--store-bg"] = theme.bg!;
   if (safe(theme.fg)) vars["--store-fg"] = theme.fg!;
