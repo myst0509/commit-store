@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-19 · 155 unit tests + 50 integration checks
+**Last updated:** 2026-08-19 · 161 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -119,6 +119,36 @@ is fetched once and cached per instance.
 - **No colour hex.** `isDark` is inferred from the colour name, which is what
   the DTG-on-darks rule runs on. Weaker than Printful's hex, and worth knowing.
 
+### Apliiq answered, 2026-08-19
+
+Four questions, four answers, and one of them is worth a lot.
+
+**Idempotency is real.** *"If the id + order_number is the same, no new order is
+submit to the system."* `buildOrderPayload` sets `id`, `number` and
+`order_number` to the same deterministic integer derived from our order id, so
+a retry cannot duplicate a garment. A test pins that identity: change one field
+without the others and the guarantee dies silently. They also asked for a
+minimum 3-5 second gap between retries; our backoff starts at 10 minutes.
+
+**No order status webhook exists at all.** Confirmed, not merely undocumented.
+Status must be polled through `getOrder`. `parseWebhook` still throws, which is
+now the stronger answer rather than the cautious one: anything arriving there
+did not come from Apliiq.
+
+**A shipping cost endpoint exists but is undocumented.** They said to check back
+the week of 2026-08-24. That is `quoteShipping` and `estimateCost`, both of
+which currently throw.
+
+**Print dimensions are still missing.** They pointed at `GET /v1/product/{id}`,
+which does populate `DesignBox` where the bulk endpoint leaves it empty. But
+verified across eight products spread through the catalog: the boxes carry
+`{BoxId, Name}` and **no width, height or DPI anywhere**. Most names are blank;
+only occasionally is one meaningful ("Left Chest", "Right Chest", "Box 1").
+
+So the per-product endpoint was not worth wiring in: it costs a request per
+blank and adds no measurement. **Design validation for Apliiq blanks stays
+blocked**, and this needs asking again more specifically.
+
 **Seven methods throw rather than guess.** `uploadArtwork`, `createProduct`,
 `deleteProduct`, `quoteShipping`, `estimateCost`, `cancelOrder` and
 `parseWebhook` have no published endpoint. Each throws a `FulfillmentError`
@@ -129,9 +159,8 @@ an order needs making.
 Same status as Printful's. Two impedance mismatches handled in code:
 
 - Their order `id` is an integer; ours is a uuid. Mapped through a
-  deterministic FNV-1a hash so a retry is the same number. **Our side is
-  stable; whether Apliiq rejects a repeat is undocumented**, so this is not yet
-  a real idempotency guarantee.
+  deterministic FNV-1a hash so a retry is the same number, which Apliiq
+  confirmed is what makes it idempotent. See the answers above.
 - Their shipping code is `upgraded` where ours is `expedited`.
 
 **CAUTION: `routeForProduct` prefers Apliiq for private label**, and its
@@ -852,4 +881,6 @@ question still unasked of Printful.
   it returns 200. Paths are PascalCase and singular; `/orders` 404s.
 
   Adapter still unwritten. Only authentication is proven.
-- **Both:** whether any idempotency guarantee exists on order creation.
+- ~~**Both:** whether any idempotency guarantee exists on order creation.~~
+  **Apliiq answered 2026-08-19: yes**, on `id` + `order_number`. Printful still
+  unanswered; there it is built on `external_id` plus a pre-flight lookup.

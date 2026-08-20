@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   ApliiqProvider,
+  buildOrderPayload,
   dollarsToCents,
   isDarkColorName,
   mapOrderStatus,
@@ -156,5 +157,61 @@ describe("apliiq is registered and routable", () => {
 
   it("leaves plain dtg with printful, which has a proven order path", () => {
     assert.equal(routeForProduct({ decoration: "dtg", privateLabel: false }).id, "printful");
+  });
+});
+
+
+describe("apliiq order payload", () => {
+  const input = {
+    localOrderId: "3f7c1e2a-9b44-4d61-8a0e-2c5f6d7e8a90",
+    storeId: "store-1",
+    items: [
+      {
+        localOrderItemId: "item-1",
+        externalVariantId: "APQ-00001386S5A50",
+        quantity: 2,
+        retailPriceCents: 3200,
+      },
+    ],
+    shipping: {
+      name: "Ada Lovelace",
+      line1: "12 Baker St",
+      city: "Riverside",
+      state: "CA",
+      postalCode: "92507",
+      country: "US",
+    },
+    shippingSpeed: "standard" as const,
+  };
+
+  // Apliiq support, 2026-08-19: "If the id + order_number is the same, no new
+  // order is submit to the system." That is the whole idempotency guarantee,
+  // and it only holds while these two fields carry the same value.
+  it("sends id and order_number as the same value", () => {
+    const p = buildOrderPayload(input);
+    assert.equal(p.id, p.order_number);
+    assert.equal(p.number, p.id);
+  });
+
+  it("derives that value from our order id, so a retry repeats it exactly", () => {
+    assert.deepEqual(buildOrderPayload(input), buildOrderPayload({ ...input }));
+  });
+
+  it("gives a different order a different id", () => {
+    const other = buildOrderPayload({ ...input, localOrderId: "00000000-0000-0000-0000-000000000001" });
+    assert.notEqual(other.id, buildOrderPayload(input).id);
+  });
+
+  it("keeps our uuid on the payload for human reconciliation", () => {
+    assert.equal(buildOrderPayload(input).name, input.localOrderId);
+  });
+
+  it("sends price as a dollar string, which is what they type it as", () => {
+    assert.equal(buildOrderPayload(input).line_items[0].price, "32.00");
+  });
+
+  it("translates expedited to their word for it", () => {
+    const p = buildOrderPayload({ ...input, shippingSpeed: "expedited" as const });
+    assert.equal(p.shipping_lines[0].code, "upgraded");
   });
 });

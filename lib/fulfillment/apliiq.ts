@@ -124,9 +124,14 @@ export function parseVariantSku(
  * idempotency on localOrderId is the one guarantee PROJECT.md requires of every
  * adapter. FNV-1a, clamped to a positive int32.
  *
- * CAVEAT: this makes OUR side stable. Whether Apliiq itself rejects a repeated
- * id is undocumented and unverified, so it is not yet a real idempotency
- * guarantee. See PROGRESS.md.
+ * CONFIRMED by Apliiq support 2026-08-19: "If the id + order_number is the
+ * same, no new order is submit to the system." So a retry is genuinely safe,
+ * provided id and order_number both carry this value. buildOrderPayload sets
+ * id, number and order_number to the same integer for exactly that reason, and
+ * a test pins it. Change one without the others and idempotency silently dies.
+ *
+ * They also asked for a minimum 3-5 second gap between retries. Our backoff
+ * starts at 10 minutes, so that is satisfied with room to spare.
  */
 export function orderIdToInt(localOrderId: string): number {
   let h = 0x811c9dc5;
@@ -269,7 +274,8 @@ export class ApliiqProvider implements FulfillmentProvider {
       cutAndSew: false,
       // No mockup endpoint is documented, so we composite ourselves.
       vendorMockups: false,
-      // No webhook documentation exists. parseWebhook throws accordingly.
+      // Confirmed absent by Apliiq support 2026-08-19: there is no order
+      // status webhook at all. So status has to be polled via getOrder.
       webhooks: false,
       // Undocumented. Null means "assume conservative", per the interface.
       rateLimitPerMinute: null,
@@ -387,28 +393,7 @@ export class ApliiqProvider implements FulfillmentProvider {
    * FULFILLMENT_LIVE guards. Treat as unproven until one has been placed.
    */
   async submitOrder(input: SubmitOrderInput): Promise<VendorOrder> {
-    const id = orderIdToInt(input.localOrderId);
-
-    const body = {
-      id,
-      number: id,
-      // Our uuid travels here, where it survives as something a human can
-      // reconcile against; their numeric fields cannot hold it.
-      name: input.localOrderId,
-      order_number: id,
-      line_items: input.items.map((i) => ({
-        id: i.localOrderItemId,
-        name: i.externalVariantId,
-        quantity: i.quantity,
-        // They type price as a string of dollars, not integer cents.
-        price: (i.retailPriceCents / 100).toFixed(2),
-        sku: i.externalVariantId,
-      })),
-      shipping_address: toApliiqAddress(input.shipping),
-      shipping_lines: [{ code: SHIPPING_CODE[input.shippingSpeed] ?? "standard" }],
-    };
-
-    const res = await this.request<{ id: number }>("POST", "/v1/Order", body);
+    const res = await this.request<{ id: number }>("POST", "/v1/Order", buildOrderPayload(input));
 
     return {
       externalOrderId: String(res.id),
@@ -497,10 +482,10 @@ export class ApliiqProvider implements FulfillmentProvider {
   }
 
   /**
-   * No webhook mechanism is documented. Returning null would claim we looked
-   * and found nothing worth acting on; throwing says we cannot verify it at
-   * all, which is what the interface requires — never process an unverified
-   * webhook.
+   * Apliiq confirmed 2026-08-19 that no order status webhook exists. Anything
+   * arriving here is therefore not from them, and returning null would treat a
+   * forgery as merely uninteresting. Throwing is the honest answer, and matches
+   * the interface rule: never process an unverified webhook.
    */
   async parseWebhook(): Promise<NormalizedWebhookEvent | null> {
     throw new FulfillmentError(
@@ -512,6 +497,36 @@ export class ApliiqProvider implements FulfillmentProvider {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * The POST /v1/Order body.
+ *
+ * Exported so the idempotency contract can be tested without placing an order.
+ * Apliiq dedupes on **id + order_number together**, so those two must always
+ * carry the same deterministic value derived from our order id.
+ */
+export function buildOrderPayload(input: SubmitOrderInput) {
+  const id = orderIdToInt(input.localOrderId);
+
+  return {
+    id,
+    number: id,
+    // Our uuid travels here, where it survives as something a human can
+    // reconcile against; their numeric fields cannot hold it.
+    name: input.localOrderId,
+    order_number: id,
+    line_items: input.items.map((i) => ({
+      id: i.localOrderItemId,
+      name: i.externalVariantId,
+      quantity: i.quantity,
+      // They type price as a string of dollars, not integer cents.
+      price: (i.retailPriceCents / 100).toFixed(2),
+      sku: i.externalVariantId,
+    })),
+    shipping_address: toApliiqAddress(input.shipping),
+    shipping_lines: [{ code: SHIPPING_CODE[input.shippingSpeed] ?? "standard" }],
+  };
+}
 
 export function mapOrderStatus(raw: string): FulfillmentStatus {
   const s = raw.toLowerCase();
