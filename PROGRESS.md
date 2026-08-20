@@ -672,6 +672,34 @@ chased again:
   (`app/api/designs/route.ts:11`), and Supabase was reachable while the API was
   not.
 
+### Why it is blocked, and what fixes it — measured 2026-08-19
+
+The block is on `*.vercel.app` specifically, at the **IP level**. Not DNS, and
+not your app.
+
+| Test | Result |
+|---|---|
+| `commit-store-xuav.vercel.app` (216.198.79.x) | **times out at TCP connect** |
+| `nextjs.org` — Vercel-hosted, custom domain | **200** |
+| `vercel.com` — custom domain | **200** |
+| DNS for the blocked host | resolves correctly, no sinkhole |
+
+DNS is fine and TLS is never reached: `curl` dies at `Trying …:443` before the
+handshake, so packets to that range are being dropped silently. Dropped rather
+than refused is exactly why the browser hangs forever instead of erroring.
+
+**Two Vercel-hosted sites on custom domains pass the same firewall.** So the
+filter is aimed at the free shared `*.vercel.app` hosting domain — a common
+phishing and malware vector, which content filters categorise wholesale — and
+not at Vercel or at us.
+
+**A custom domain therefore fixes this outright**, for us and for any customer
+on a similar network. This is no longer only about seller subdomains; it is
+about whether the product is reachable at all from university and corporate
+networks. Register early: some enterprise filters treat newly registered
+domains as suspect for a period, so the reputation clock is worth starting
+before launch rather than at it.
+
 **Do not debug the frontend from campus without a VPN.** A VPN was set up on
 2026-08-16 and resolves it completely — the API answers in under a second
 through it, for the browser and for command-line tooling alike. Without one,
