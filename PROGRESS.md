@@ -512,6 +512,39 @@ limited, so it suits catalogue imagery rather than a live design tool.
 
 ---
 
+## Hosting — Hobby is not a legal option for this project
+
+Checked against Vercel's own docs 2026-08-19.
+
+> "the Hobby plan restricts users to non-commercial, personal use only"
+> — vercel.com/docs/plans/hobby
+
+Commit takes customer payments and pays sellers. That is commercial by any
+reading, so **the free plan has to be left before launch**, independent of any
+technical limit. Not urgent while nothing is live; not skippable either.
+
+Corrections to things previously assumed:
+
+- **Custom domains DO work on Hobby** — 50 per project. Pro is unlimited.
+- **Wildcard domains have no documented plan gate**, but require Vercel's
+  nameservers rather than a CNAME.
+- Function duration is **not** a constraint: Hobby allows 300s.
+- The comment in `app/api/cron/tick/route.ts` says Hobby allows two cron jobs
+  once daily. The limits page now shows 100 per project with a footnote. Worth
+  re-checking before relying on either number; the external-scheduler plan in
+  DEPLOY.md sidesteps it regardless.
+
+**Switching host does not fix the firewall problem** — a custom domain does,
+on any host. Keep the two decisions separate.
+
+The argument for staying on Vercel and paying for Pro is narrow but strong:
+automatic TLS for unlimited per-seller custom domains. That is the hard part of
+multi-tenant hosting, and self-hosting it means Caddy on-demand TLS plus Let's
+Encrypt rate limits. Railway, Render or Fly running `next start` are otherwise
+genuine alternatives — nothing in the code is Vercel-specific except the crons
+in `vercel.json`, and Sharp needs a real Node runtime, which rules out
+Workers-style platforms.
+
 ## Open decisions
 
 - **Who pays for shipping.** The largest open question, and it invalidates the
