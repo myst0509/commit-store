@@ -404,6 +404,87 @@ like store-e78523d2. Treat that as unset: prompt them to choose both, since
 those placeholders are what a customer would otherwise see.
 ```
 
+### 6. App shell and navigation — the last structural piece
+
+The screens were built one at a time, so each works but nothing ties them
+together. This prompt is deliberately STRUCTURAL only: no colours, no type, no
+visual direction. That comes separately, and a restyle here would only be
+thrown away.
+
+```
+Tie the existing screens together into one app. Do NOT restyle anything or
+change any visual design. This is about navigation, routing and states only.
+
+1. PERSISTENT SHELL
+   Every signed-in screen shares one layout with persistent navigation.
+   Sidebar on desktop, collapsible or bottom nav on mobile. Destinations:
+
+     Launch      /launch            the guided sequence
+     Home        /dashboard         earnings, recent orders, products
+     Designs     /designs
+     Products    /products
+     Drops       /drops
+     Payouts     /settings/payouts
+     Settings    /settings
+
+   Highlight the current one. Keep the order above: the launch path is the
+   product's spine, not a settings page, so it goes first.
+
+   Orders have no list screen of their own. They are reached from the recent
+   orders on /dashboard. Do not add an Orders nav item or a /orders route.
+
+2. SIGN OUT
+   Put it in the shell, not buried on a screen. Supabase signOut, then send
+   them to /auth.
+
+3. AUTH BEHAVIOUR
+   Unauthenticated visits already redirect to /auth. Add the other half: if
+   ANY api call returns 401 mid-session, the token has expired. Sign out and
+   send them to /auth with a short message saying the session ended. Do not
+   leave them on a screen that silently fails to load.
+
+4. ONE SHARED FETCH HELPER
+   Right now each screen talks to the API its own way. Replace that with a
+   single helper every screen uses. It must:
+     - attach Authorization: Bearer <session.access_token>
+     - on 401, trigger the sign-out behaviour above
+     - on any other non-2xx, read { error } from the body and throw that
+       message
+     - on a network failure, throw a plain "Could not reach the server"
+
+   This matters more than it looks. Every error the API returns is already
+   written for a human, and the only reason a seller ever sees a generic
+   failure is the frontend dropping the message.
+
+5. CONSISTENT LOADING AND ERROR STATES
+   Every screen that loads data has exactly three states, and never gets
+   stuck between them:
+     loading  -> a skeleton
+     error    -> the message from the helper, plus a Retry button
+     loaded   -> content, or an empty state
+
+   A request that fails MUST leave the error state, never an endless spinner.
+   Make sure every fetch has a catch that clears loading.
+
+6. EMPTY STATES
+   The account is new, so most screens are legitimately empty. Each empty
+   state says what to do next and links there, rather than saying "no data":
+     Products  -> no products yet, the launch path creates the first one
+     Drops     -> no drops yet, a drop needs a product first
+     Designs   -> upload your first design
+     Dashboard -> no sales yet
+     Payouts   -> connect a bank account to get paid
+
+7. A NOT FOUND ROUTE
+   Any unknown path shows a simple not-found page with a link back to
+   /dashboard, rather than a blank screen.
+
+DO NOT
+- Do not change colours, fonts, spacing or any visual styling.
+- Do not add screens that are not listed above.
+- Do not add an Orders index or a /orders route.
+```
+
 **Designs** (built) — `POST /api/designs/upload-url` with `{ filename }` returns
 `{ uploadUrl, token, storagePath }`. Upload the file to `uploadUrl` directly,
 then `POST /api/designs` with `{ storagePath, filename, blankId? }`. The

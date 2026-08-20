@@ -635,6 +635,7 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Order detail | **DONE** |
 | Payouts | **DONE** |
 | Store settings | **TODO** — endpoint built 2026-08-19, prompt in LOVABLE.md |
+| App shell / navigation | **TODO** — prompt in LOVABLE.md, structural only |
 
 All eight built as of 2026-08-16. Routes, verified live:
 
