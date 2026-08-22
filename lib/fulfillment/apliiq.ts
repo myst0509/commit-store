@@ -454,12 +454,35 @@ export class ApliiqProvider implements FulfillmentProvider {
 
   /* ---------------- not published by the vendor ---------------- */
 
+  /**
+   * NOT merely undiscovered — Apliiq support, 2026-08-19: "there isn't any
+   * positioning available in API for you to supply the placement."
+   *
+   * So the ArtworkUpload contract, which carries a placement, cannot be
+   * expressed against their API at all. Their model is template-first: build a
+   * mockup template by hand in the Apliiq account, then reference it by id.
+   *
+   * Whether one template can be reused across different artwork, or whether
+   * each design needs its own, decides whether Apliiq can serve self-serve
+   * sellers or only a curated catalogue. Unanswered. See PROGRESS.md.
+   */
   async uploadArtwork(_input: ArtworkUpload): Promise<VendorArtwork> {
-    throw new FulfillmentError("validation", `uploadArtwork: ${UNDISCOVERED}`, "apliiq");
+    throw new FulfillmentError(
+      "validation",
+      "uploadArtwork: Apliiq has no API for supplying artwork placement. Their " +
+        "flow needs a mockup template created in the account and referenced by id.",
+      "apliiq",
+    );
   }
 
+  /** Same constraint as uploadArtwork: placement cannot be supplied via API. */
   async createProduct(_input: CreateVendorProductInput): Promise<VendorProduct> {
-    throw new FulfillmentError("validation", `createProduct: ${UNDISCOVERED}`, "apliiq");
+    throw new FulfillmentError(
+      "validation",
+      "createProduct: Apliiq has no API for supplying artwork placement. Their " +
+        "flow needs a mockup template created in the account and referenced by id.",
+      "apliiq",
+    );
   }
 
   async deleteProduct(_externalProductId: string): Promise<void> {

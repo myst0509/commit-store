@@ -149,6 +149,47 @@ So the per-product endpoint was not worth wiring in: it costs a request per
 blank and adds no measurement. **Design validation for Apliiq blanks stays
 blocked**, and this needs asking again more specifically.
 
+### The constraint that actually matters, 2026-08-19
+
+Following up on print dimensions produced something bigger than dimensions.
+Apliiq support, verbatim:
+
+> "there isn't any positioning available in API for you to supply the
+> placement. One suggestion is use mockup template id field to supply a mockup
+> template you create in your account (design like normal with a sample artwork
+> - could be blank / white artwork) and re-use it as a mockup template"
+
+**Their API cannot be told where to put a design.** Placement is not a missing
+field, it is not part of their model. The flow is template-first: build a
+mockup template by hand in the Apliiq account, then reference it by id.
+
+This is why `uploadArtwork` and `createProduct` throw. Not "endpoint not
+found" — `ArtworkUpload` carries a `placement`, and that contract cannot be
+expressed against their API at all.
+
+**The open question decides whether Apliiq is usable for self-serve sellers.**
+Is one template reusable across different artwork, or does each design need its
+own?
+
+- **Reusable per garment and position** — build roughly a dozen templates once,
+  reference them by id, and sellers upload freely. Apliiq stays viable.
+- **One per design** — every seller upload needs a human in the Apliiq
+  dashboard first. That does not scale past a curated catalogue, and PROJECT.md
+  wants sellers with no audience self-serving.
+
+Unanswered, and worth answering before any more Apliiq work. Their phrasing
+("re-use it as a mockup template") leans towards reusable, but leaning is not
+knowing.
+
+Also from the same reply:
+
+- **No other endpoint carries print dimensions.** Adding them to `DesignBox` is
+  "a possible request". They are checking whether a reference table of print
+  area sizes exists.
+- **`DesignBox` naming confirmed.** An empty `Name` means the garment has a
+  single default print area. Numbered boxes ("Box 1".."Box 4") appear where
+  there are several, for example the front of shorts or pants.
+
 **Seven methods throw rather than guess.** `uploadArtwork`, `createProduct`,
 `deleteProduct`, `quoteShipping`, `estimateCost`, `cancelOrder` and
 `parseWebhook` have no published endpoint. Each throws a `FulfillmentError`
