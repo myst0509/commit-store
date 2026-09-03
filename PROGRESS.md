@@ -706,6 +706,7 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Payouts | **DONE** |
 | Store settings | **TODO** — endpoint built 2026-08-19, prompt in LOVABLE.md |
 | App shell / navigation | **TODO** — prompt in LOVABLE.md, structural only |
+| New product + catalog browse | **TODO** — `POST /api/products` built 2026-08-19 |
 
 All eight built as of 2026-08-16. Routes, verified live:
 
@@ -716,6 +717,18 @@ All eight built as of 2026-08-16. Routes, verified live:
 | `/products/:id` `/orders/:id` | detail; no bare `/orders` index |
 | `/settings/payouts` | **must stay at this path** — it is where Stripe returns |
 | `/settings` | store settings, not yet built |
+
+**`GET`/`POST /api/products` added 2026-08-19.** Before this the launch path's
+price step was the only thing that could create a product, and it presents as a
+completed rung of a sequence afterwards — so a seller could build exactly one
+product and had no route to a second. The creation logic moved to
+`lib/products/create.ts` and both callers share it, so the price floor and the
+variant fan-out cannot drift between a seller's first product and their fifth.
+
+Note the upsert keys on `(store_id, slug)`, so reusing a name edits the
+existing product rather than making another. `POST` refuses a duplicate name
+with a message saying so, rather than letting a seller wonder where their
+product went.
 
 **`/api/store` added 2026-08-19.** `GET` and `PATCH` for brand name, web
 address and theme. Until it existed a store could only ever be named once, by

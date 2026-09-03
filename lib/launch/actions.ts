@@ -3,6 +3,10 @@ import {
 } from "@/lib/design/validate";
 import { UserError } from "@/lib/errors";
 import { PLATFORM_FEE_CENTS } from "@/lib/pricing";
+import { createProductFromBlank } from "@/lib/products/create";
+// Re-exported: the definition lives with the code that uses it, and two copies
+// of a slug rule would drift the first time one was "improved".
+export { toSlug } from "@/lib/products/create";
 import { serviceClient } from "@/lib/supabase/client";
 
 /** A standard adult front print. Used before a blank has been chosen. */
@@ -182,70 +186,21 @@ const HANDLERS: Record<string, Handler> = {
    * they earn. The base/fee split is stored but never shown — see 0002.
    */
   async set_price(storeId, input) {
-    const sb = serviceClient();
-    const blankId = String(input.blankId ?? "");
-    const designId = input.designId ? String(input.designId) : null;
-    const retailCents = Number(input.retailPriceCents);
-    const productName = String(input.name ?? "Untitled");
-
-    if (!blankId) throw new UserError("Choose a blank first");
-    if (!Number.isInteger(retailCents) || retailCents <= 0) {
-      throw new UserError("Price must be a whole number of cents");
-    }
-
-    const { data: variants, error: vErr } = await sb
-      .from("catalog_variants")
-      .select("id, base_cost_cents, color, size")
-      .eq("blank_id", blankId)
-      .eq("in_stock", true);
-
-    if (vErr || !variants?.length) throw new UserError("That blank has no available variants");
-
-    const cheapest = Math.min(...variants.map((v) => v.base_cost_cents));
-    const unitCost = cheapest + PLATFORM_FEE_CENTS;
-    if (retailCents < unitCost) {
-      throw new UserError(
-        `At $${(retailCents / 100).toFixed(2)} you would lose money — ` +
-        `this garment costs you $${(unitCost / 100).toFixed(2)}`,
-      );
-    }
-
-    const { data: product, error: pErr } = await sb
-      .from("products")
-      .upsert({
-        store_id: storeId, blank_id: blankId,
-        name: productName, slug: toSlug(productName),
-        decoration: "dtg", status: "draft",
-      }, { onConflict: "store_id,slug" })
-      .select("id")
-      .single();
-    if (pErr) throw pErr;
-
-    const { error: pvErr } = await sb.from("product_variants").upsert(
-      variants.map((v) => ({
-        product_id: product.id,
-        catalog_variant_id: v.id,
-        retail_price_cents: retailCents,
-        base_cost_cents: v.base_cost_cents,
-        platform_fee_cents: PLATFORM_FEE_CENTS,
-        is_enabled: true,
-      })),
-      { onConflict: "product_id,catalog_variant_id" },
-    );
-    if (pvErr) throw pvErr;
-
-    if (designId) {
-      await sb.from("product_artwork").upsert({
-        product_id: product.id, design_id: designId,
-        placement: "front", decoration: "dtg",
-      }, { onConflict: "product_id,placement" });
-    }
+    // Shared with POST /api/products, so the price floor and the variant
+    // fan-out cannot differ between a seller's first product and their fifth.
+    const created = await createProductFromBlank({
+      storeId,
+      blankId: String(input.blankId ?? ""),
+      name: String(input.name ?? "Untitled"),
+      retailPriceCents: Number(input.retailPriceCents),
+      designId: input.designId ? String(input.designId) : null,
+    });
 
     return {
-      productId: product.id,
-      variantCount: variants.length,
-      unitCostCents: unitCost,
-      marginCents: retailCents - unitCost,
+      productId: created.productId,
+      variantCount: created.variantCount,
+      unitCostCents: created.unitCostCents,
+      marginCents: created.marginCents,
     };
   },
 
@@ -380,9 +335,4 @@ export function toSubdomain(name: string): string {
   return s;
 }
 
-export function toSlug(name: string): string {
-  return name.toLowerCase().normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || "product";
-}
+

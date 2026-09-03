@@ -123,16 +123,15 @@ step creates a product with nowhere to view it, and its `drop_date` step needs a
 screen that cannot be verified today: Connect is not enabled on the Stripe
 account.
 
-### There are no list endpoints
+### List endpoints, and the one that is still missing
 
-Only `/api/drops` returns a collection. There is no `GET /api/products` and no
-`GET /api/orders` — Lovable will assume both exist and get a 404. Lists come
-from `/api/dashboard`:
+`/api/drops` and `/api/products` return collections. **There is still no
+`GET /api/orders`** — Lovable will assume there is and get a 404. The orders
+list comes from `/api/dashboard` → `sales.recent[]`, most recent 25, no
+pagination. Orders have a detail route per id but no index.
 
-- products list → `dashboard.products[]`
-- orders list → `dashboard.sales.recent[]` (most recent 25, no pagination)
-
-Detail routes are per-id only.
+Prompt 1 below predates `GET /api/products` and tells the Products screen to
+read `dashboard.products[]`. Prompt 7 corrects that.
 
 ### 1. Products — NEXT
 
@@ -483,6 +482,82 @@ DO NOT
 - Do not change colours, fonts, spacing or any visual styling.
 - Do not add screens that are not listed above.
 - Do not add an Orders index or a /orders route.
+```
+
+### 7. New product, and browsing the catalog
+
+Added 2026-08-19 alongside `POST /api/products`. Until then the launch path's
+price step was the only thing that could make a product, and it shows as a
+completed rung of a sequence afterwards, so a seller could build exactly one
+product and had no route to a second.
+
+**This also adds `GET /api/products`**, so the Products screen from prompt 1
+should stop reading `dashboard.products[]` and use it. The note further up
+about there being no list endpoint is now out of date for products.
+
+```
+Two changes.
+
+1. THE PRODUCTS LIST HAS ITS OWN ENDPOINT NOW
+
+   GET /api/products
+     { products: [ { id, name, slug, status, createdAt,
+                     variantCount, priceCents, unitCostCents } ] }
+
+   Newest first. Switch the Products screen to this instead of reading
+   dashboard.products[]. Everything else about that screen stays as it is.
+
+2. A NEW PRODUCT FLOW, reachable from a button on the Products screen
+
+   Three steps, one screen. Do not make it a wizard with separate pages.
+
+   Step one, pick a garment:
+     GET /api/catalog
+       { blanks: [ { id, brand, model, decoration, imageUrl,
+                     fromUnitCostCents } ] }
+
+     Show them as a grid with the image, brand and model, and "from $X" using
+     fromUnitCostCents. That number already includes our fee, so it is what
+     the seller pays. Do not add anything to it.
+
+     Selecting one loads the detail:
+     GET /api/catalog?blank=<id>
+       { id, brand, model, description, decoration, imageUrl,
+         colors:     [ { name, hex, isDark } ],
+         printAreas: [ { placement, widthIn, heightIn, minDpi } ],
+         variants:   [ { id, color, size, inStock, unitCostCents } ] }
+
+     Show the colours and sizes it comes in. This is browsing, not selecting
+     variants: the product is created across every in-stock variant.
+
+   Step two, pick a design (optional):
+     GET /api/designs lists what they have uploaded. Let them choose one or
+     skip. Skipping makes a product with no artwork attached yet.
+
+   Step three, name and price it:
+     POST /api/products
+       { blankId, name, retailPriceCents, designId? }
+     returns 201 with
+       { productId, slug, variantCount, unitCostCents, marginCents }
+
+     Show unitCostCents and marginCents live as they type the price, but ONLY
+     after the server has told you them. Do not calculate margin in the
+     frontend. Until they submit, show the cost from the catalog response.
+
+     One price applies to every variant, same as the edit screen.
+
+     On success go to /products/{productId}.
+
+   ERRORS, all returned as { error } with wording meant for a person:
+     - a name they already used: "You already have a product called X"
+     - a price below cost: names the real cost in dollars
+     - a blank with nothing in stock
+   Show them as sent. Do not pre-validate the price yourself; the floor
+   depends on the cheapest variant and only the server knows it.
+
+EMPTY STATE
+No designs uploaded yet is fine and common. Say so and link to Designs,
+but still let them create a product without one.
 ```
 
 **Designs** (built) — `POST /api/designs/upload-url` with `{ filename }` returns
