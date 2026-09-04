@@ -114,8 +114,9 @@ is fetched once and cached per instance.
   found a real bug: `validateAgainstPlacement` divided by that zero, got
   `Infinity`, and `Infinity < minDpi` is false — so **every design passed**. A
   missing spec had silently become an unlimited one. Fixed: unknown dimensions
-  now refuse with `unknown_print_area`. **Consequence: Apliiq blanks cannot
-  pass design validation until real print areas are obtained from them.**
+  now refuse with `unknown_print_area`. **Solvable as of 2026-08-19**: print
+  areas come from the mockup templates we create, not from their API. See the
+  template answer below.
 - **No colour hex.** `isDark` is inferred from the colour name, which is what
   the DTG-on-darks rule runs on. Weaker than Printful's hex, and worth knowing.
 
@@ -167,19 +168,51 @@ This is why `uploadArtwork` and `createProduct` throw. Not "endpoint not
 found" — `ArtworkUpload` carries a `placement`, and that contract cannot be
 expressed against their API at all.
 
-**The open question decides whether Apliiq is usable for self-serve sellers.**
-Is one template reusable across different artwork, or does each design need its
-own?
+**ANSWERED 2026-08-19: templates are reusable, and Apliiq is viable.** Their
+support, on whether one template can serve many different designs:
 
-- **Reusable per garment and position** — build roughly a dozen templates once,
-  reference them by id, and sellers upload freely. Apliiq stays viable.
-- **One per design** — every seller upload needs a human in the Apliiq
-  dashboard first. That does not scale past a curated catalogue, and PROJECT.md
-  wants sellers with no audience self-serving.
+> "Yes, you can use the template design as mockup template id and provide a
+> different artwork (preferable same dimension expected for most predictable
+> outcome and artwork should be 300 DPI ideally)"
 
-Unanswered, and worth answering before any more Apliiq work. Their phrasing
-("re-use it as a mockup template") leans towards reusable, but leaning is not
-knowing.
+and on the approach of a small fixed set of templates:
+
+> "that is the correct approach with mockup template. Setting up a set of
+> templates with various size and placement would allow you to learn the most
+> accurate cost from our tool."
+
+So the shape is: build a template library once, by hand, covering the garments
+and positions we offer. Each order references a template id and supplies the
+seller's artwork. No human in the loop per design. Self-serve works.
+
+**This also solves the print dimensions problem, from the other end.** We could
+not get print areas out of their API — but we do not need to, because *we*
+create the templates. The placeholder artwork we design each template with
+defines its print area, so we know the width, height and DPI because we chose
+them. The numbers become our configuration rather than their data.
+
+That turns `PlacementSpec` for Apliiq from zeroes-meaning-unknown into real
+values, and unblocks design validation for their blanks.
+
+**Their stated artwork expectations:** same pixel dimensions as the template's
+placeholder for the most predictable result, and 300 DPI. Note that is double
+the 150 DPI `REFERENCE_FRONT` uses for the pre-blank check in the launch path.
+
+### What Apliiq needs next, in order
+
+1. **Create the templates by hand** in the Apliiq account: a placeholder design
+   per garment and position we intend to offer, at a deliberate pixel size.
+   Nothing can be built until these exist, and their ids and dimensions are
+   what the registry below records.
+2. **Ask for the exact payload.** Still unknown: which field carries the mockup
+   template id, and how the artwork is supplied alongside it. "Mockup template
+   id field" is all we have. Without it `uploadArtwork` and `createProduct`
+   stay throwing.
+3. **Build a template registry** — `(blankExternalId, placement) -> {templateId,
+   widthIn, heightIn, minDpi}` — and emit `PlacementSpec` from it.
+
+Steps 1 and 2 are prerequisites, and 2 is worth asking now since it is another
+round trip with them.
 
 Also from the same reply:
 
