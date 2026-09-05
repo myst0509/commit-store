@@ -323,6 +323,44 @@ is no per-store Tailwind build.
 `next.config.ts` allows remote images from `files.cdn.printful.com` and
 `*.supabase.co` only.
 
+## 3a. Public site and store directory — TODO (belongs in THIS repo)
+
+Direction given 2026-08-19: a public homepage greeting visitors, listing new
+and popular stores, plus intro pages explaining the platform before anyone
+signs up. Sign in and sign up sit top right and hand off to the dashboard.
+
+**This does not go in Lovable.** LOVABLE.md already keeps storefronts here
+because PROJECT.md needs crawlable HTML for sellers who start with no audience.
+The marketing homepage is the most SEO-critical page on the platform and a
+store directory is exactly the kind of page search should index, so both belong
+in this repo, server-rendered, next to `/s/[host]`.
+
+The split, so it stays clear:
+
+| Surface | Where | Why |
+|---|---|---|
+| Marketing home, intro pages, store directory | this repo | public, SEO |
+| Seller storefronts `/s/[host]` | this repo | public, SEO |
+| Everything behind sign-in | Lovable | authenticated, no SEO need |
+
+**`GET /api/stores` is built** (2026-08-19) and serves whichever surface needs
+it. Read through the ANON client so RLS decides visibility — `public reads
+active stores` and `public reads published products` already say the right
+thing. A store appears only if it is active AND has a published product, since
+sending a visitor to an empty storefront is worse than a shorter list.
+
+Verified against the live database as an anonymous visitor: 1 store visible
+(Demo Brand), and the draft store correctly invisible.
+
+**"Popular" is ranked by product count, not sales.** Sales live in `orders`,
+which anonymous visitors cannot read and should not. Publishing how much each
+seller sells is a decision about exposing their performance, not a sorting
+detail, so the response carries `rankedBy: "product_count"` and says so rather
+than implying a popularity it cannot measure. Revisit once there are sales and
+a deliberate answer.
+
+Not built: the pages themselves.
+
 ## 3. Storefront rendering — PARTIAL
 
 Server-rendered. `npm run build` reports `/s/[host]` and `/s/[host]/p/[slug]` as
@@ -739,6 +777,7 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Payouts | **DONE** |
 | Store settings | **TODO** — prompt 5 did not land; `/settings` 404s |
 | App shell / navigation | **DONE** — prompt 6 applied 2026-08-19 |
+| Guide as home, store after launch | **TODO** — prompt 8 in LOVABLE.md |
 | New product + catalog browse | **DONE** — `/products/new` live |
 
 All eight built as of 2026-08-16. Routes, verified live:

@@ -560,6 +560,78 @@ No designs uploaded yet is fine and common. Say so and link to Designs,
 but still let them create a product without one.
 ```
 
+### 8. The guide as home, and what replaces it after launch
+
+The shape the seller experience should take, from 2026-08-19. This is
+information architecture, not visual styling: colours, type and spacing are
+still unspecified, so this prompt says nothing about them and the current look
+should carry over untouched.
+
+```
+Rework the signed-in home so it changes as the seller progresses.
+
+/dashboard is the home. What it shows depends on how far through the launch
+path they are. Read GET /api/launch for that:
+  { progress: { done, total, percent }, current: {...}, steps: [...] }
+
+BEFORE THE LAUNCH PATH IS FINISHED (progress.done < progress.total)
+
+The guide IS the home page. Not a checklist tucked in a corner, the main
+thing on the screen.
+
+Lay the 8 steps out as a board of cards they can look across, rather than a
+single vertical list they scroll. Each card shows the step title, its
+`outcome` line, and its state:
+  completed  quiet, checked, with completedAt
+  available  the one with an active button, visibly the next thing to do
+  locked     dimmed, and says what it is waiting for from blockedBy
+
+Clicking any card opens that step. A completed card opens what it produced,
+so they can revisit their brand name or their design without hunting for it.
+A locked card explains what comes first rather than doing nothing.
+
+Show progress as "3 of 8" plus the percent. Sellers are three weeks into
+this; they need to see it moving.
+
+AT THE END OF THE BOARD, A PAYOUTS PREVIEW
+
+After the last step card, show a small earnings panel. It is there to make
+the point that this is how they get paid.
+
+From GET /api/dashboard:
+  earnings: { payableCents, pendingCents, lifetimeCents, payoutsHeld }
+  bank:     { connected, ready }
+
+Be honest about the state. It will read $0.00 with no bank connected, and
+that is fine. Say what it will show once they sell, and link to
+/settings/payouts to connect a bank. Never imply money is waiting when it
+is not, and never present $0 as a failure.
+
+AFTER THE LAUNCH PATH IS FINISHED (progress.done === progress.total)
+
+The guide steps aside. It has done its job and should stop occupying the
+home page.
+
+/dashboard becomes the store: earnings, recent orders, products, and a
+clear link to their live storefront (store.url from GET /api/dashboard).
+
+Keep the guide reachable at /launch, showing all steps complete, so they can
+still revisit what they made. Do NOT delete it, and do NOT keep it as the
+first thing they see.
+
+Make the transition feel like an arrival rather than a page quietly
+changing. The first time they land on the finished version, say something
+that marks it: their store is live, here is where it lives.
+
+RULES
+- Drive the switch off progress from GET /api/launch. Never off local state
+  or a flag you keep yourself, or a seller on a second device sees the wrong
+  home.
+- Everything here uses endpoints that already exist. No new API is needed.
+- Do not change colours, fonts or spacing. Visual direction is coming
+  separately and a restyle now would be thrown away.
+```
+
 **Designs** (built) — `POST /api/designs/upload-url` with `{ filename }` returns
 `{ uploadUrl, token, storagePath }`. Upload the file to `uploadUrl` directly,
 then `POST /api/designs` with `{ storagePath, filename, blankId? }`. The
