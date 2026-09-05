@@ -560,6 +560,29 @@ No designs uploaded yet is fine and common. Say so and link to Designs,
 but still let them create a product without one.
 ```
 
+### The public directory endpoint
+
+`GET /api/stores` is public, no auth. It serves the marketing home, which
+lives in the Next.js repo rather than here — but the shape is recorded so both
+sides agree.
+
+```
+{
+  newest:     [ { name, subdomain, url, productCount, coverImageUrl, openedAt } ],
+  topEarners: [ { name, subdomain, url, productCount, coverImageUrl, rank } ]
+}
+```
+
+`topEarners` is ordered by what sellers have actually earned, highest first,
+and carries **no amounts** — only `rank`. A viewer cannot tell whether first
+place earned ten dollars or ten thousand. Render it as a horizontally
+scrolling row of cards, five by default. `?earners=10` asks for ten.
+
+It comes back **empty** until at least five stores qualify. A ranking hides
+amounts but not order, and a top five drawn from six stores tells everyone who
+is last. Design the section to disappear cleanly rather than showing an empty
+shelf.
+
 ### 8. The guide as home, and what replaces it after launch
 
 The shape the seller experience should take, from 2026-08-19. This is

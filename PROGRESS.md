@@ -352,12 +352,28 @@ sending a visitor to an empty storefront is worse than a shorter list.
 Verified against the live database as an anonymous visitor: 1 store visible
 (Demo Brand), and the draft store correctly invisible.
 
-**"Popular" is ranked by product count, not sales.** Sales live in `orders`,
-which anonymous visitors cannot read and should not. Publishing how much each
-seller sells is a decision about exposing their performance, not a sorting
-detail, so the response carries `rankedBy: "product_count"` and says so rather
-than implying a popularity it cannot measure. Revisit once there are sales and
-a deliberate answer.
+**`topEarners` ranks on real seller earnings and publishes no amounts.**
+Decided 2026-08-19: show who is earning most, never how much.
+
+Summed from `ledger_entries` where `kind = 'seller_margin'`, signed so a
+clawback pulls a store down rather than up. Only `rank` crosses the boundary —
+no totals, no counts, no currency — so a viewer cannot tell whether first place
+earned ten dollars or ten thousand, nor the gap between any two.
+
+**This is a deliberate service-role exception**, the only one in a public
+route. `ledger_entries` is invisible to anonymous readers by design and must
+stay so; ranking on it needs a cross-tenant aggregate, which is exactly what
+RLS exists to prevent. It is computed inside `rankByEarnings` and the money
+never leaves that function. `newest` still goes through RLS as normal.
+
+**The leaderboard stays empty below five qualifying stores.** A ranking hides
+the amounts but not the order, and a top five drawn from six stores tells
+everyone who is last. With two stores it is simply publishing which seller is
+doing better. Stores that have earned nothing are left out entirely rather than
+ranked last.
+
+**Open: sellers have not agreed to being ranked publicly.** If that becomes a
+concern the fix is an opt-out flag on the store, not a change to the ranking.
 
 Not built: the pages themselves.
 
