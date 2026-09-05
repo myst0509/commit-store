@@ -832,6 +832,58 @@ DO NOT
 - Do not restyle seller storefronts; those are themed by sellers in /settings.
 ```
 
+### 13. Steps happen on the home page, not on another page
+
+Bug from prompt 10: pressing "Start this step" navigates to `/launch`, which
+renders a second copy of the guide. The home page should BE the guide, and a
+step should be performed without leaving it.
+
+```
+Fix the guide so steps are done in place.
+
+1. NO STEP EVER NAVIGATES TO /launch
+   Pressing a step's button must not change the page. Open its form right
+   there on the home page: expand the card in place, or a modal for the ones
+   that need room, like the garment picker. Pick one pattern and use it
+   everywhere.
+
+   On success, POST /api/launch returns { result, progress, next }. Refetch
+   GET /api/launch and update the board in place. The card becomes completed,
+   the next one unlocks, the progress moves. No navigation, no reload.
+
+   On error, show the message from { error } next to the form and leave what
+   they typed alone. Do not close the form and lose their input.
+
+2. /launch STOPS BEING REACHABLE WHILE THE GUIDE IS THE HOME
+   While progress.done < progress.total, /launch redirects to /dashboard.
+   There must be exactly one page showing the guide at any time.
+
+   Once progress.done === progress.total, /launch renders the completed guide
+   and appears in the nav, as prompt 10 describes. That does not change.
+
+3. ONE STEP IS ALLOWED TO NAVIGATE
+   "Upload your first design" goes to /designs, because uploading is its own
+   screen with its own flow. That is fine. After a successful upload, bring
+   them back to the home page with that step showing complete, rather than
+   leaving them on /designs wondering what happened.
+
+   Every other step stays on the home page.
+
+FORMS EACH STEP NEEDS, all posted to POST /api/launch as
+{ step: "<key>", input: { ... } }
+
+  name       { name }                        text field
+  design     handled on /designs
+  blank      { blankId }                     picker from GET /api/catalog
+  price      { blankId, designId, name, retailPriceCents }
+  drop_date  { productId, closesAt, thresholdUnits }
+  waitlist   {}                              no input, just confirm
+  launch     {}                              no input, just confirm
+
+The last two take no input, so they should be a single confirm rather than a
+form with nothing in it.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which
