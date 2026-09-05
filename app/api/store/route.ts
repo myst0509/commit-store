@@ -1,7 +1,10 @@
 import { errorResponse, requireSeller } from "@/lib/auth/session";
 import { UserError } from "@/lib/errors";
 import { rootDomain, type StoreTheme } from "@/lib/store/resolve";
-import { normalizeBrandName, normalizeSubdomain, normalizeTheme, THEME_KEYS } from "@/lib/store/settings";
+import {
+  normalizeBio, normalizeBrandName, normalizeSocial, normalizeSubdomain,
+  normalizeTheme, THEME_KEYS,
+} from "@/lib/store/settings";
 import { serviceClient } from "@/lib/supabase/client";
 
 /**
@@ -26,6 +29,8 @@ interface StoreRow {
   subdomain: string;
   status: string;
   theme: StoreTheme | null;
+  bio: string | null;
+  social: Record<string, string> | null;
   custom_domain: string | null;
   first_sale_at: string | null;
 }
@@ -57,6 +62,8 @@ function present(row: StoreRow) {
     url: `https://${row.subdomain}.${rootDomain()}`,
     customDomain: row.custom_domain,
     theme: splitTheme(row.theme as Record<string, unknown> | null).theme,
+    bio: row.bio,
+    social: row.social ?? {},
     // Changing a web address after people have the old one is a different
     // decision from changing it before launch, so the screen needs to know.
     hasSold: Boolean(row.first_sale_at),
@@ -67,7 +74,7 @@ async function load(storeId: string): Promise<StoreRow> {
   const sb = serviceClient();
   const { data, error } = await sb
     .from("stores")
-    .select("id, name, subdomain, status, theme, custom_domain, first_sale_at")
+    .select("id, name, subdomain, status, theme, bio, social, custom_domain, first_sale_at")
     .eq("id", storeId)
     .single();
 
@@ -91,6 +98,8 @@ export async function PATCH(req: Request): Promise<Response> {
       name?: unknown;
       subdomain?: unknown;
       theme?: unknown;
+      bio?: unknown;
+      social?: unknown;
     };
 
     const patch: Record<string, unknown> = {};
@@ -125,6 +134,10 @@ export async function PATCH(req: Request): Promise<Response> {
       const { other } = splitTheme(current.theme as Record<string, unknown> | null);
       patch.theme = { ...other, ...normalizeTheme(body.theme) };
     }
+
+    // null clears the bio; an absent key leaves it alone.
+    if (body.bio !== undefined) patch.bio = normalizeBio(body.bio);
+    if (body.social !== undefined) patch.social = normalizeSocial(body.social);
 
     if (Object.keys(patch).length === 0) {
       throw new UserError("Nothing to change");

@@ -1086,6 +1086,72 @@ surface is the other place this goes wrong, and it usually goes unnoticed
 because the text is still faintly visible.
 ```
 
+### 17. The guide covers building the store, not just dropping
+
+Reshaped 2026-08-19. It was a single run at launching a drop, which left a
+seller with a live store that was a bare product grid. Twelve steps now, in
+three phases. **Apply prompt 16 first** — several of these are dropdowns.
+
+Backend is done and deployed. `GET /api/launch` gains `phases` and a `phase`
+on every step.
+
+```
+Rework the guide for a longer, grouped sequence.
+
+GET /api/launch now returns:
+  progress: { done, total, percent }        total is 12 now, not 8
+  phases:   [ { key, title, blurb } ]       make, build, sell
+  steps:    [ { key, day, phase, title, outcome, status, blockedBy,
+                completedAt, optional } ]
+
+GROUP THE BOARD BY PHASE, in the order phases arrives:
+
+  Make something     name, design, blank, price
+  Build your store   style, story, socials, sample
+  Start selling      bank, drop_date, waitlist, launch
+
+Show each phase with its title and blurb, and its own progress. Finishing a
+phase should feel like finishing something. Do not flatten all twelve into one
+list.
+
+THE FOUR NEW STEPS
+
+  style    POST /api/launch { step: "style", input: { theme: {...} } }
+           theme takes bg, fg, accent, muted, radius. Colour pickers, not hex
+           fields. Show a small live preview of a storefront card. At least
+           one value is required.
+
+  story    POST /api/launch { step: "story", input: { bio } }
+           A short introduction shown on their storefront. Under 500
+           characters; the server says how long theirs is if it is over.
+           Show a live character count.
+
+  socials  POST /api/launch { step: "socials", input: { social: {...} } }
+           Keys: instagram, tiktok, youtube, x, website.
+           Send HANDLES, not URLs. The server strips a leading @ and pulls the
+           handle out of a pasted profile link, so all three work. website is
+           the exception and takes a full https:// address.
+           At least one is required, or they can skip the step.
+
+  bank     POST /api/launch { step: "bank", input: {} }
+           This CONFIRMS rather than performs. Connecting happens on Stripe.
+           Send them to /settings/payouts to connect, then this button checks
+           whether Stripe says payouts are enabled. If not, the error names
+           what Stripe is still waiting for. Optional, because a store can open
+           without one and the earnings just wait.
+
+TWO STEPS ARE OPTIONAL: sample and bank
+Both come back with optional: true. Show "Not now" on those and only those,
+calling POST /api/launch { step, skip: true }. Skipped renders differently
+from completed — passed over, not achieved.
+
+STYLE, STORY AND SOCIALS ARE ALSO IN SETTINGS
+PATCH /api/store takes theme, bio and social with the same rules. A seller who
+did them in the guide must be able to change them later in /settings, and the
+values must match in both places. Do not build two different editors; build one
+and use it in both.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which

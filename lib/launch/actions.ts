@@ -7,6 +7,11 @@ import { createProductFromBlank } from "@/lib/products/create";
 // Re-exported: the definition lives with the code that uses it, and two copies
 // of a slug rule would drift the first time one was "improved".
 export { toSlug } from "@/lib/products/create";
+import { syncConnectStatus } from "@/lib/payouts/connect";
+import {
+  normalizeBio, normalizeSocial, normalizeTheme, socialUrl, SOCIAL_PLATFORMS,
+  type SocialPlatform,
+} from "@/lib/store/settings";
 import { serviceClient } from "@/lib/supabase/client";
 
 /** A standard adult front print. Used before a blank has been chosen. */
@@ -184,6 +189,85 @@ const HANDLERS: Record<string, Handler> = {
       maxPrintSize: `${check.maxPrintInches.width}″ × ${check.maxPrintInches.height}″`,
       warnings: check.findings.filter((f) => f.severity === "warning").map((f) => f.message),
     };
+  },
+
+  /**
+   * Style, story and links: the three steps that turn a product grid into
+   * something that reads as a brand. All three write to `stores` and all three
+   * are validated the same way the settings screen is, so the guide and
+   * /settings cannot disagree about what is allowed.
+   */
+  async set_theme(storeId, input) {
+    const sb = serviceClient();
+    const theme = normalizeTheme(input.theme ?? {});
+
+    if (!Object.keys(theme).length) {
+      throw new UserError("Pick at least one colour for your store");
+    }
+
+    // Merge over whatever is stored, so this cannot wipe the waitlist flag
+    // that publish_waitlist keeps in the same column.
+    const { data } = await sb.from("stores").select("theme").eq("id", storeId).single();
+    await sb.from("stores")
+      .update({ theme: { ...((data?.theme as object) ?? {}), ...theme } })
+      .eq("id", storeId);
+
+    return { theme };
+  },
+
+  async set_story(storeId, input) {
+    const bio = normalizeBio(input.bio);
+    if (!bio) throw new UserError("Write a line or two about your brand");
+
+    const sb = serviceClient();
+    await sb.from("stores").update({ bio }).eq("id", storeId);
+
+    return { bio, characters: bio.length };
+  },
+
+  async set_socials(storeId, input) {
+    const social = normalizeSocial(input.social ?? {});
+
+    if (!Object.keys(social).length) {
+      throw new UserError("Add at least one link, or skip this for now");
+    }
+
+    const sb = serviceClient();
+    await sb.from("stores").update({ social }).eq("id", storeId);
+
+    return {
+      social,
+      links: SOCIAL_PLATFORMS
+        .filter((p) => social[p])
+        .map((p) => socialUrl(p as SocialPlatform, social[p]!)),
+    };
+  },
+
+  /**
+   * Connecting a bank happens on Stripe, not here, so this step confirms the
+   * result rather than performing it. It completes only when Stripe says
+   * payouts are enabled — our own record is not evidence, since a seller who
+   * abandons onboarding halfway looks finished from this side.
+   *
+   * Optional: a store can open without one. Earnings simply wait.
+   */
+  async connect_bank(storeId) {
+    const status = await syncConnectStatus(storeId);
+
+    if (!status.accountId) {
+      throw new UserError(
+        "Start with Payouts in your settings, then come back and press this again",
+      );
+    }
+
+    if (!status.payoutsEnabled) {
+      const outstanding = status.requirements.length
+        ? ` Stripe still needs: ${status.requirements.slice(0, 3).join(", ")}`
+        : "";
+      throw new UserError(`Stripe has not finished checking your details yet.${outstanding}`);
+    }
+
+    return { connected: true, readyForPayouts: true };
   },
 
   /** Day 5. Records the chosen blank; the product itself is created at pricing. */

@@ -1,6 +1,6 @@
 import { errorResponse, requireSeller } from "@/lib/auth/session";
 import { getLaunchState, performStep } from "@/lib/launch/actions";
-import type { StepKey } from "@/lib/launch/steps";
+import { PHASES, type StepKey } from "@/lib/launch/steps";
 
 /**
  * The launch path, as an API.
@@ -25,6 +25,8 @@ export async function GET(req: Request): Promise<Response> {
     return Response.json({
       store: { name: session.storeName, subdomain: session.subdomain },
       progress: state.summary,
+      // Display grouping. Unlocking still comes from blockedBy.
+      phases: PHASES,
       current: state.current && {
         key: state.current.key,
         title: state.current.title,
@@ -33,6 +35,7 @@ export async function GET(req: Request): Promise<Response> {
       steps: state.steps.map((s) => ({
         key: s.key,
         day: s.dayIndex,
+        phase: s.phase,
         title: s.title,
         outcome: s.outcome,
         status: s.status,

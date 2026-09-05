@@ -96,18 +96,20 @@ describe("subdomain and slug generation", () => {
 });
 
 describe("skipping a step", () => {
-  // order_sample is not built: a sample is a real vendor order and PROJECT.md
-  // gates subsidised samples behind caps and a kill switch that do not exist.
-  // drop_date requires sample, so without a way past it the back half of the
-  // path is unreachable and no store can ever open.
-  it("marks only the sample step optional", () => {
-    const optional = STEPS.filter((s) => s.optional).map((s) => s.key);
-    assert.deepEqual(optional, ["sample"]);
+  // Two steps can be passed over. order_sample is not built, because a sample
+  // is a real vendor order and PROJECT.md gates subsidised samples behind caps
+  // that do not exist. connect_bank is optional on purpose: a store can open
+  // without a bank attached and the earnings simply wait, which is better than
+  // blocking a launch on Stripe finishing its checks.
+  it("marks sample and bank optional, and nothing else", () => {
+    const optional = STEPS.filter((s) => s.optional).map((s) => s.key).sort();
+    assert.deepEqual(optional, ["bank", "sample"]);
   });
 
-  it("treats a skipped step as done, so the next one unlocks", () => {
+  it("treats a skipped step as done for whatever depends on it", () => {
     const states = resolveSteps({
       name: done(), design: done(), blank: done(), price: done(),
+      style: done(), story: done(), socials: done(),
       sample: { status: "skipped", completedAt: "2026-08-19T00:00:00Z" },
     });
     assert.equal(states.find((s) => s.key === "drop_date")!.status, "available");
@@ -115,18 +117,72 @@ describe("skipping a step", () => {
 
   it("counts a skip toward progress, or the path could never read as finished", () => {
     const all = Object.fromEntries(
-      STEPS.map((s) => [s.key, s.key === "sample"
+      STEPS.map((s) => [s.key, s.optional
         ? { status: "skipped" as const, completedAt: "2026-08-19T00:00:00Z" }
         : done()]),
     );
-    const states = resolveSteps(all);
-    assert.equal(progressSummary(states).done, STEPS.length);
-    assert.equal(progressSummary(states).percent, 100);
+    assert.equal(progressSummary(resolveSteps(all)).percent, 100);
+  });
+});
+
+describe("the guide is actually completable", () => {
+  // The reshape into phases moved every dependency. This is the check that
+  // matters: before it, drop_date required sample, sample could not be done or
+  // skipped, and the back half of the path was unreachable by anyone.
+  it("never depends on a step that comes later", () => {
+    const position = new Map(STEPS.map((s, i) => [s.key, i]));
+    for (const step of STEPS) {
+      for (const required of step.requires) {
+        assert.ok(position.has(required), `${step.key} requires unknown step ${required}`);
+        assert.ok(
+          position.get(required)! < position.get(step.key)!,
+          `${step.key} requires ${required}, which comes after it`,
+        );
+      }
+    }
   });
 
-  it("leaves every other step required", () => {
-    for (const s of STEPS) {
-      if (s.key !== "sample") assert.notEqual(s.optional, true, s.key);
+  it("can be walked from empty to finished, doing each available step in turn", () => {
+    const state: Record<string, { status: "completed" | "skipped"; completedAt: string }> = {};
+
+    for (let guard = 0; guard < STEPS.length + 1; guard++) {
+      const states = resolveSteps(state);
+      if (progressSummary(states).percent === 100) break;
+
+      const next = states.find((s) => s.status === "available");
+      assert.ok(next, "stuck: no step is available and the path is not finished");
+      state[next.key] = { status: "completed", completedAt: "2026-08-19T00:00:00Z" };
+    }
+
+    assert.equal(progressSummary(resolveSteps(state)).percent, 100);
+  });
+
+  it("can be finished while skipping everything skippable", () => {
+    const state: Record<string, { status: "completed" | "skipped"; completedAt: string }> = {};
+
+    for (let guard = 0; guard < STEPS.length + 1; guard++) {
+      const states = resolveSteps(state);
+      if (progressSummary(states).percent === 100) break;
+
+      const next = states.find((s) => s.status === "available");
+      assert.ok(next, "stuck: a skippable step left the path unreachable");
+      state[next.key] = {
+        status: next.optional ? "skipped" : "completed",
+        completedAt: "2026-08-19T00:00:00Z",
+      };
+    }
+
+    assert.equal(progressSummary(resolveSteps(state)).percent, 100);
+  });
+
+  it("puts every step in a phase, and every phase in order", () => {
+    const order = ["make", "build", "sell"];
+    let seen = -1;
+    for (const step of STEPS) {
+      const i = order.indexOf(step.phase);
+      assert.ok(i >= 0, `${step.key} has no phase`);
+      assert.ok(i >= seen, `${step.key} is in phase ${step.phase}, out of order`);
+      seen = i;
     }
   });
 });

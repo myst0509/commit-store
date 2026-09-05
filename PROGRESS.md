@@ -798,8 +798,11 @@ Workers-style platforms.
 - **Print areas are per-placement, not per-technique.** `PlacementSpec` records one
   print area per placement; the default technique wins. A seller choosing a
   non-default technique may see slightly wrong dimensions.
-- **The 21-day launch sequence is undefined.** Only the 8 steps PROJECT.md names
-  are seeded, with placeholder day numbers.
+- ~~**The 21-day launch sequence is undefined.**~~ **Reshaped 2026-08-19** into
+  twelve steps across three phases: make something, build your store, start
+  selling. The guide now covers building the storefront, not only launching a
+  drop. Note `launch_steps` in the database is seeded but never read — `STEPS`
+  in `lib/launch/steps.ts` is the only source of truth.
 
 ## Resolved
 

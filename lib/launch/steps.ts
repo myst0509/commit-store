@@ -13,9 +13,19 @@
 
 export type StepKey =
   | "name" | "design" | "blank" | "price"
-  | "sample" | "drop_date" | "waitlist" | "launch";
+  | "style" | "story" | "socials" | "sample"
+  | "bank" | "drop_date" | "waitlist" | "launch";
 
 export type StepStatus = "locked" | "available" | "completed" | "skipped";
+
+/** Three phases: make something, build the store around it, then sell it. */
+export type StepPhase = "make" | "build" | "sell";
+
+export const PHASES: Array<{ key: StepPhase; title: string; blurb: string }> = [
+  { key: "make",  title: "Make something", blurb: "A design on a real garment, priced so you earn on every sale" },
+  { key: "build", title: "Build your store", blurb: "Make it look like yours and tell people who you are" },
+  { key: "sell",  title: "Start selling", blurb: "Set a date, gather people, open the doors" },
+];
 
 export interface StepDefinition {
   key: StepKey;
@@ -24,6 +34,8 @@ export interface StepDefinition {
   title: string;
   /** Dispatch target in ./actions. */
   actionKey: string;
+  /** Grouping for display. Unlocking still comes from `requires`. */
+  phase: StepPhase;
   /**
    * Can a seller move past this without doing it?
    *
@@ -45,44 +57,85 @@ export interface StepDefinition {
  * 21-day sequence is still undefined, and inventing the other thirteen would be
  * making product decisions in a code file.
  */
+/**
+ * The guide, in three phases.
+ *
+ * Reshaped 2026-08-19. It used to be a single run at launching a drop, which
+ * left a seller with a live store that was a bare product grid. It now also
+ * covers building the store itself, because "make a thing" and "have a brand"
+ * are not the same job.
+ *
+ * Every step performs an action, per PROJECT.md. None of them are advice.
+ *
+ * `phase` groups them for display only; ordering and unlocking still come from
+ * `requires`. Day numbers are spread across the 21 days PROJECT.md describes.
+ */
 export const STEPS: StepDefinition[] = [
+  /* ---- Phase 1: make something ---- */
   {
-    key: "name", dayIndex: 1, title: "Name your brand",
+    key: "name", dayIndex: 1, phase: "make", title: "Name your brand",
     actionKey: "create_store", requires: [],
     outcome: "Creates your storefront at yourname.ourdomain.com",
   },
   {
-    key: "design", dayIndex: 3, title: "Upload your first design",
+    key: "design", dayIndex: 3, phase: "make", title: "Upload your first design",
     actionKey: "upload_design", requires: ["name"],
     outcome: "Checks your artwork is high enough resolution to print",
   },
   {
-    key: "blank", dayIndex: 5, title: "Choose your blank",
+    key: "blank", dayIndex: 5, phase: "make", title: "Choose your garment",
     actionKey: "select_blank", requires: ["design"],
     outcome: "Picks the garment your design gets printed on",
   },
   {
-    key: "price", dayIndex: 7, title: "Set your price",
+    key: "price", dayIndex: 7, phase: "make", title: "Set your price",
     actionKey: "set_price", requires: ["blank"],
     outcome: "Creates your product and shows what you earn per sale",
   },
+
+  /* ---- Phase 2: build the store ---- */
   {
-    key: "sample", dayIndex: 9, title: "Order your sample",
+    key: "style", dayIndex: 9, phase: "build", title: "Style your store",
+    actionKey: "set_theme", requires: ["price"],
+    outcome: "Sets the colours your storefront uses",
+  },
+  {
+    key: "story", dayIndex: 10, phase: "build", title: "Say who you are",
+    actionKey: "set_story", requires: ["price"],
+    outcome: "Adds an introduction to your storefront",
+  },
+  {
+    key: "socials", dayIndex: 11, phase: "build", title: "Add your links",
+    actionKey: "set_socials", requires: ["price"],
+    outcome: "Shows people where else to find you",
+  },
+  {
+    // Not built, and skippable so it cannot wall off the rest of the path.
+    key: "sample", dayIndex: 12, phase: "build", title: "Order your sample",
     actionKey: "order_sample", requires: ["price"], optional: true,
     outcome: "Sends one unit to you, so you see it before anyone buys",
   },
+
+  /* ---- Phase 3: get ready to sell ---- */
   {
-    key: "drop_date", dayIndex: 12, title: "Pick your drop date",
-    actionKey: "schedule_drop", requires: ["sample"],
+    // Optional: a seller can open a store without a bank attached. Earnings
+    // simply wait, which is better than blocking a launch on Stripe.
+    key: "bank", dayIndex: 14, phase: "sell", title: "Connect your bank",
+    actionKey: "connect_bank", requires: ["price"], optional: true,
+    outcome: "Sets up where your earnings get paid out",
+  },
+  {
+    key: "drop_date", dayIndex: 16, phase: "sell", title: "Pick your drop date",
+    actionKey: "schedule_drop", requires: ["style", "story", "socials"],
     outcome: "Sets the day your product goes on sale",
   },
   {
-    key: "waitlist", dayIndex: 14, title: "Open your waitlist",
+    key: "waitlist", dayIndex: 18, phase: "sell", title: "Open your waitlist",
     actionKey: "publish_waitlist", requires: ["drop_date"],
     outcome: "Puts a signup page live so people can be told when you launch",
   },
   {
-    key: "launch", dayIndex: 21, title: "Launch",
+    key: "launch", dayIndex: 21, phase: "sell", title: "Launch",
     actionKey: "publish_store", requires: ["waitlist"],
     outcome: "Makes your storefront public and opens orders",
   },

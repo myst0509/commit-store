@@ -88,3 +88,107 @@ export function normalizeTheme(input: unknown): StoreTheme {
 
   return theme;
 }
+
+/* ------------------------------------------------------------------ */
+/* Storefront content                                                  */
+/* ------------------------------------------------------------------ */
+
+/** Long enough to say who you are, short enough that nobody writes an essay. */
+const MAX_BIO = 500;
+
+export function normalizeBio(input: unknown): string | null {
+  if (input === null || input === undefined) return null;
+  const bio = String(input).trim();
+  if (!bio) return null;
+  if (bio.length > MAX_BIO) {
+    throw new UserError(
+      `That is ${bio.length} characters. Keep it under ${MAX_BIO} so it fits on your store`,
+    );
+  }
+  return bio;
+}
+
+export const SOCIAL_PLATFORMS = ["instagram", "tiktok", "youtube", "x"] as const;
+export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+export interface StoreSocial {
+  instagram?: string;
+  tiktok?: string;
+  youtube?: string;
+  x?: string;
+  website?: string;
+}
+
+/**
+ * Handles only, and one website URL.
+ *
+ * Storing a handle rather than a URL is the point: the storefront builds
+ * `instagram.com/<handle>` itself, so a seller cannot label a link "Instagram"
+ * and send a customer somewhere else. The website is the one free-form
+ * destination, and it is restricted to http(s) so `javascript:` and `data:`
+ * cannot be smuggled into an anchor.
+ */
+export function normalizeSocial(input: unknown): StoreSocial {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    throw new UserError("Social links must be a set of handles");
+  }
+
+  const raw = input as Record<string, unknown>;
+  const allowed = [...SOCIAL_PLATFORMS, "website"];
+
+  for (const key of Object.keys(raw)) {
+    if (!allowed.includes(key)) {
+      throw new UserError(`We do not support "${key}" yet`);
+    }
+  }
+
+  const out: StoreSocial = {};
+
+  for (const platform of SOCIAL_PLATFORMS) {
+    const value = raw[platform];
+    if (value === undefined || value === null || value === "") continue;
+
+    // People paste "@name", "name", or a whole profile URL. Take the handle
+    // out of all three rather than making them work out which we want.
+    const handle = String(value)
+      .trim()
+      .replace(/^https?:\/\/[^/]+\//i, "")
+      .replace(/^@/, "")
+      .replace(/\/+$/, "");
+
+    if (!/^[A-Za-z0-9._-]{1,30}$/.test(handle)) {
+      throw new UserError(
+        `"${handle}" does not look like a ${platform} handle. Letters, numbers, dots, underscores and hyphens only`,
+      );
+    }
+    out[platform] = handle;
+  }
+
+  const website = raw.website;
+  if (website !== undefined && website !== null && website !== "") {
+    const url = String(website).trim();
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      throw new UserError("That website address is not valid. Include https://");
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      throw new UserError("A website link has to start with http:// or https://");
+    }
+    out.website = parsed.toString();
+  }
+
+  return out;
+}
+
+/** Where a handle actually points. The storefront never trusts a stored URL. */
+export function socialUrl(platform: SocialPlatform, handle: string): string {
+  const base: Record<SocialPlatform, string> = {
+    instagram: "https://instagram.com/",
+    tiktok: "https://tiktok.com/@",
+    youtube: "https://youtube.com/@",
+    x: "https://x.com/",
+  };
+  return base[platform] + handle;
+}
