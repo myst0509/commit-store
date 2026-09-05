@@ -737,9 +737,9 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Drops | **DONE** |
 | Order detail | **DONE** |
 | Payouts | **DONE** |
-| Store settings | **TODO** — endpoint built 2026-08-19, prompt in LOVABLE.md |
-| App shell / navigation | **TODO** — prompt in LOVABLE.md, structural only |
-| New product + catalog browse | **TODO** — `POST /api/products` built 2026-08-19 |
+| Store settings | **TODO** — prompt 5 did not land; `/settings` 404s |
+| App shell / navigation | **DONE** — prompt 6 applied 2026-08-19 |
+| New product + catalog browse | **DONE** — `/products/new` live |
 
 All eight built as of 2026-08-16. Routes, verified live:
 
@@ -749,7 +749,9 @@ All eight built as of 2026-08-16. Routes, verified live:
 | `/launch` `/dashboard` `/designs` `/products` `/drops` | list screens |
 | `/products/:id` `/orders/:id` | detail; no bare `/orders` index |
 | `/settings/payouts` | **must stay at this path** — it is where Stripe returns |
-| `/settings` | store settings, not yet built |
+| `/settings` | **404 — prompt 5 never landed.** The shell's nav links here,
+  so it is a dead link in the built app. Re-run prompt 5. |
+| `/products/new` | new product flow, live |
 
 **`GET`/`POST /api/products` added 2026-08-19.** Before this the launch path's
 price step was the only thing that could create a product, and it presents as a
