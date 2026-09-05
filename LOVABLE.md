@@ -884,6 +884,60 @@ The last two take no input, so they should be a single confirm rather than a
 form with nothing in it.
 ```
 
+### 14. Uploading a design is a file upload, not a link
+
+"Upload the file before recording it" means the design step was called without
+an uploaded file. The UI is asking for a URL; it needs a file picker.
+
+Backend fixed 2026-08-19: the step no longer wants `publicUrl` — which nothing
+ever produced, so this could not have worked — and now reads the bytes out of
+storage instead. It needs `storagePath` and nothing else.
+
+```
+Fix the design upload. It must take a FILE, not a link. Remove any field that
+asks for an image URL.
+
+THREE STEPS, in order. The middle one goes straight to Supabase, not to our
+API.
+
+1. Ask for an upload link
+     POST /api/designs/upload-url   { filename: "logo.png" }
+     -> { uploadUrl, token, storagePath }
+
+   Only png, jpg, jpeg, webp and svg are accepted. Anything else comes back
+   400 with a message naming the extension.
+
+2. Send the file to that link
+   Upload the raw file to `uploadUrl`. This is a Supabase signed upload URL,
+   so it goes directly from the browser to storage and never through our API.
+   Do NOT send an Authorization header to it.
+
+3. Record it
+   From the Designs screen:
+     POST /api/designs   { storagePath, filename, blankId? }
+   From the launch guide:
+     POST /api/launch    { step: "design", input: { storagePath, filename } }
+
+   Send back the storagePath from step 1, exactly as given. Nothing else
+   identifies the file.
+
+WHAT COMES BACK
+The server downloads the file, measures the real pixels, and checks it will
+print. The response carries the measured dimensions, the largest size it can
+print at, and any warnings. Show those; they are the point of the step.
+
+Artwork that is too small to print at any size is rejected with a message
+saying so. Show it and let them pick a different file.
+
+DO NOT
+- Do not offer a URL field anywhere in this flow.
+- Do not send widthPx or heightPx. The server measures the file itself and
+  ignores anything the client claims.
+- Do not send an auth header to the Supabase upload URL.
+- Do not skip step 1 and invent a storagePath. Paths are issued by the server
+  and one belonging to another seller is rejected.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which

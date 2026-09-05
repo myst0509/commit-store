@@ -650,6 +650,26 @@ owns it.
 
 Not built: any seller or storefront UI for drops.
 
+### The design step could never have worked — fixed 2026-08-19
+
+`upload_design` required a `publicUrl` in its input. Nothing ever produced
+one: `POST /api/designs/upload-url` returns `{ uploadUrl, token, storagePath }`
+and no `publicUrl` anywhere. So the documented flow could not satisfy the
+launch path's design step, and the seller saw "Upload the file before
+recording it" no matter what they did.
+
+It now takes `storagePath` alone, downloads the bytes through the service
+role, and derives the public URL itself — the same shape `POST /api/designs`
+already used. The two agree now.
+
+Two things came with it:
+
+- **Removed a request-forgery hole.** The old code did `fetch(publicUrl)` on a
+  caller-supplied address. Authenticated, but still the server fetching
+  wherever a client points it.
+- **Added the ownership check** `POST /api/designs` already had. Without it a
+  seller could record another seller's uploaded artwork as their own.
+
 ## 4. Design upload and mockups — PARTIAL
 
 `lib/design/validate.ts` — artwork checked against the print areas and minimum

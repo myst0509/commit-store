@@ -103,9 +103,33 @@ const HANDLERS: Record<string, Handler> = {
   /** Day 3. Artwork is uploaded to storage first; this records and validates it. */
   async upload_design(storeId, input) {
     const sb = serviceClient();
-    const { storagePath, publicUrl, filename, widthPx, heightPx } = input as Record<string, string & number>;
+    const { storagePath, filename } = input as Record<string, string>;
 
-    if (!publicUrl || !storagePath) throw new UserError("Upload the file before recording it");
+    if (!storagePath) {
+      throw new UserError(
+        "Upload the file first. Ask for an upload link, send the file to it, " +
+        "then record it with the storagePath you were given",
+      );
+    }
+
+    // The path must sit under this seller's folder. Without this a seller
+    // could record someone else's uploaded artwork as their own. Same check
+    // POST /api/designs makes.
+    if (!String(storagePath).startsWith(`${storeId}/`)) {
+      throw new UserError("That file is not yours");
+    }
+
+    // Read the bytes out of storage rather than fetching a URL the caller
+    // supplied. Two reasons this changed: the upload-url endpoint never
+    // returned a publicUrl, so this step could not be satisfied by the
+    // documented flow at all; and fetching a client-supplied address from the
+    // server is a request-forgery hole regardless of who is signed in.
+    const { data: file, error: downloadError } = await sb.storage
+      .from("artwork").download(String(storagePath));
+
+    if (downloadError || !file) {
+      throw new UserError("We could not read that upload. Try uploading it again");
+    }
 
     // Inspect the real bytes rather than trusting whatever the client reported.
     // A blank has not been chosen yet at this point in the sequence, so this
@@ -114,12 +138,13 @@ const HANDLERS: Record<string, Handler> = {
     // happen once a blank is picked.
     let facts;
     try {
-      const res = await fetch(String(publicUrl));
-      if (!res.ok) throw new UserError(`could not read the uploaded file (HTTP ${res.status})`);
-      facts = await inspectArtwork(Buffer.from(await res.arrayBuffer()));
+      facts = await inspectArtwork(Buffer.from(await file.arrayBuffer()));
     } catch (e) {
       throw new UserError(`Could not read that image: ${e instanceof Error ? e.message : e}`);
     }
+
+    // Derived here, not accepted from the caller.
+    const publicUrl = sb.storage.from("artwork").getPublicUrl(String(storagePath)).data.publicUrl;
 
     const check = validateAgainstPlacement(facts, REFERENCE_FRONT);
     const blocking = check.findings.filter((f) => f.code === "far_too_small");
