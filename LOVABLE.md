@@ -751,6 +751,87 @@ DO NOT
 - Do not add a light/dark toggle unless asked.
 ```
 
+### 12. Visual direction, take two: Linear
+
+**Replaces the palette in prompt 11.** The green wash it produced was wrong.
+Reference is linear.app.
+
+Note this shifts the brief: Linear is not vibrant, it is restrained. Colour
+becomes rare and deliberate rather than energetic everywhere. Prompt 11's
+"loud on the guide, quiet on money" still holds, but "loud" now means one
+confident accent and generous space, not saturation.
+
+```
+Restyle the app to feel like linear.app. Appearance only: do not change
+routes, data, logic or behaviour.
+
+FIRST, REMOVE WHAT IS THERE
+Take out the green accent and the green wash or underlay behind sections
+entirely. Nothing should keep that colour.
+
+WHAT ACTUALLY MAKES LINEAR LOOK LIKE LINEAR
+It is not "a dark theme with purple". Four things do the work:
+
+1. The interface is nearly monochrome. Greys carry almost everything, and
+   colour appears rarely enough that it means something when it does.
+2. Surfaces barely separate from the background. A card is a few percent
+   lighter, with a hairline border, not a distinct panel.
+3. Type is the design. Tight tracking on headings, modest sizes, careful
+   hierarchy, plenty of space around it.
+4. Colour appears as atmosphere, not as fill. A soft wide glow behind a hero.
+   Never a coloured card, never a coloured section background.
+
+PALETTE
+  bg          #08090A   page
+  surface     #0F1011   cards, panels
+  surface-2   #16181A   hover, raised
+  border      rgba(255,255,255,0.07)   hairlines, never a solid grey line
+  text        #F7F8F8   primary
+  muted       #8A8F98   secondary
+  faint       #62666D   timestamps, captions
+  accent      #5E6AD2   indigo, the only colour
+  positive    #4CB782   success only
+  danger      #EB5757   errors only
+
+Use accent for primary buttons, focus rings, links, active nav and progress.
+Nothing else should be coloured. If a screen has more than a few accent
+elements on it, that is too many.
+
+TYPE
+Inter throughout, from Google Fonts.
+  display   28-40px, weight 600, letter-spacing -0.02em
+  heading   16-20px, weight 600, letter-spacing -0.01em
+  body      14px, weight 400, line-height 1.6
+  small     13px for secondary, 12px for captions
+
+Smaller than feels natural, with more space around it. Density with air, not
+big type shouting.
+
+SHAPE AND DEPTH
+  radius    6px for buttons and inputs, 8px for cards. No pill shapes.
+  shadows   almost none. Separate things with borders and background, not
+            drop shadows.
+  glow      one soft radial accent glow behind the public hero, very low
+            opacity, blurred wide. Nowhere else.
+
+MOTION
+100-200ms, ease-out. Hovers change background a few percent. Nothing bounces,
+nothing slides far, nothing loops.
+
+THE HEADER
+A blurred translucent bar over the content, with a hairline bottom border.
+This is the one frosted surface in the app.
+
+DO NOT
+- Do not colour section backgrounds or cards.
+- Do not use gradients on buttons or text.
+- Do not add a second accent colour.
+- Do not increase border contrast to make edges "clearer". Hairlines are the
+  point.
+- Do not change routes, data or behaviour.
+- Do not restyle seller storefronts; those are themed by sellers in /settings.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which

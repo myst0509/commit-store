@@ -815,8 +815,20 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | App shell / navigation | **DONE** — prompt 6 applied 2026-08-19 |
 | Guide as home, store after launch | **DONE** — behaviour unverified, needs a signed-in look |
 | Public homepage and directory | **DONE** — `/`, `/how-it-works`, `/stores` live |
-| One home (drop duplicate `/launch`) | **TODO** — prompt 10 |
-| Visual direction: vibrant, dark, forward | **TODO** — prompt 11 |
+| One home, Launch tab arrives on completion | **DONE** — prompt 10 |
+| Visual direction | **TODO** — prompt 11 applied but rejected; prompt 12 replaces it |
+
+**Visual direction settled 2026-08-19 as linear.app**, after prompt 11's
+vibrant green was tried and rejected. Prompt 12 supersedes its palette.
+
+Worth keeping straight: the brief moved from "vibrant" to "restrained". Linear
+is nearly monochrome, with colour rare enough to mean something. Prompt 11's
+rule of being loud on the guide and quiet on money still stands, but loud now
+means one confident accent and generous space rather than saturation.
+
+Also corrects guidance I gave in prompt 11: "no purple, no frosted surfaces"
+was aimed at generic loud gradients, and Linear uses a restrained indigo and a
+single frosted header. The distinction is atmosphere versus fill.
 | New product + catalog browse | **DONE** — `/products/new` live |
 
 All eight built as of 2026-08-16. Routes, verified live:
