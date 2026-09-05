@@ -815,6 +815,8 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | App shell / navigation | **DONE** — prompt 6 applied 2026-08-19 |
 | Guide as home, store after launch | **DONE** — behaviour unverified, needs a signed-in look |
 | Public homepage and directory | **DONE** — `/`, `/how-it-works`, `/stores` live |
+| One home (drop duplicate `/launch`) | **TODO** — prompt 10 |
+| Visual direction: vibrant, dark, forward | **TODO** — prompt 11 |
 | New product + catalog browse | **DONE** — `/products/new` live |
 
 All eight built as of 2026-08-16. Routes, verified live:

@@ -655,6 +655,93 @@ DO NOT
 - Do not change the signed-in screens.
 ```
 
+### 10. One home, not two
+
+`/launch` and `/dashboard` render the same thing while the launch path is
+unfinished, so the nav has two entries for one page.
+
+```
+Collapse the launch path and the dashboard into a single home.
+
+/dashboard is the only home. Remove Launch from the navigation, and make
+/launch redirect to /dashboard so any old link still works.
+
+Nothing about the guide behaviour changes: while the launch path is
+unfinished, /dashboard shows the guide. Once it is finished, /dashboard shows
+the store.
+
+BUT the guide must stay reachable after it is finished, or a seller can never
+look at it again. Put a quiet entry point on the finished dashboard, a link
+or a small collapsed panel, that opens the completed guide. Not a nav item,
+not a banner. Something they can find when they want it and ignore when they
+do not.
+```
+
+### 11. Visual direction
+
+The look, given 2026-08-19: vibrant and forward-looking, not calm and papery.
+Sellers should feel like they are building something new.
+
+This supersedes the "calm, confident, uncluttered" line in the original prompt
+on tone of *appearance*. It does not supersede the rules about plain language,
+one clear action per screen, or honest empty states.
+
+```
+Restyle the app. This is appearance only: do not change routes, data, logic
+or what any screen does.
+
+THE FEELING
+Someone using this is making something that did not exist before. It should
+feel energetic and modern, like a tool for building, not like a bank or a
+stationery shop. Confident, high contrast, unafraid of colour.
+
+Avoid the default AI-startup look: no purple-to-blue gradients, no glassy
+frosted cards everywhere, no floating blobs.
+
+PALETTE, as a starting point rather than a rule
+  ink        #0A0A0F   near-black canvas
+  surface    #14141C   raised cards and panels
+  line       #26263400 hairlines, low contrast
+  text       #F5F5F7   primary
+  muted      #9A9AAB   secondary text
+  accent     #00E5A0   electric green, the one loud colour
+  warn       #FF6B4A   coral, used sparingly for attention
+
+Dark canvas, one vivid accent used decisively. The accent carries actions,
+progress and success. Do not spread it evenly over everything, it stops
+meaning anything.
+
+Check contrast. Mid-tone accent as small text on dark usually fails; use it
+for fills, borders and large type, and keep body copy in text/muted.
+
+TYPE
+A geometric sans for display and a neutral sans for body. Space Grotesk and
+Inter from Google Fonts work well together.
+
+Be bold with scale. Headings should be large and tight. Body stays calm and
+readable at 15 to 16px. The contrast between the two is most of the feeling.
+
+MOTION
+Quick and purposeful, 150 to 250ms. Things that change state should visibly
+change: a completed step, a rising progress bar, a saved value. Nothing that
+loops, nothing decorative, nothing that delays an action.
+
+WHERE TO BE LOUD, AND WHERE NOT
+Loud: the public site, the guide, empty states, the moment a store goes live.
+These are the moments worth celebrating.
+
+Quiet: anything with money on it. Earnings, payouts, order totals, the price
+editor. These stay plain, high contrast and unornamented. People are trusting
+you with their income, and a screen about money should look like it is being
+careful. Vibrancy here reads as a toy.
+
+DO NOT
+- Do not change routes, data fetching, or any screen's behaviour.
+- Do not restyle seller storefronts. Those are themed by each seller through
+  /settings and are not part of this.
+- Do not add a light/dark toggle unless asked.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which
