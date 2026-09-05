@@ -329,7 +329,12 @@ Direction given 2026-08-19: a public homepage greeting visitors, listing new
 and popular stores, plus intro pages explaining the platform before anyone
 signs up. Sign in and sign up sit top right and hand off to the dashboard.
 
-**This does not go in Lovable.** LOVABLE.md already keeps storefronts here
+**Decided 2026-08-19: built in Lovable for now** (prompt 9), with the tradeoff
+understood. Porting it to server-rendered here is a pre-launch task. There is
+no domain and no customers yet, so nothing is lost today; what would be lost is
+crawlability, and that only matters once the site is findable.
+
+The reasoning for why it eventually belongs here still stands. LOVABLE.md keeps storefronts here
 because PROJECT.md needs crawlable HTML for sellers who start with no audience.
 The marketing homepage is the most SEO-critical page on the platform and a
 store directory is exactly the kind of page search should index, so both belong
@@ -794,6 +799,7 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Store settings | **TODO** — prompt 5 did not land; `/settings` 404s |
 | App shell / navigation | **DONE** — prompt 6 applied 2026-08-19 |
 | Guide as home, store after launch | **TODO** — prompt 8 in LOVABLE.md |
+| Public homepage and directory | **TODO** — prompt 9; in Lovable by decision |
 | New product + catalog browse | **DONE** — `/products/new` live |
 
 All eight built as of 2026-08-16. Routes, verified live:

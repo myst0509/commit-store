@@ -560,6 +560,101 @@ No designs uploaded yet is fine and common. Say so and link to Designs,
 but still let them create a product without one.
 ```
 
+### 9. The public homepage
+
+Built in Lovable by decision 2026-08-19, with the tradeoff understood: this is
+the most SEO-critical page on the platform and a client-rendered version cannot
+be crawled well. Acceptable for now because there is no domain and no
+customers. Porting it to server-rendered in the Next.js repo is a pre-launch
+task, not a never task.
+
+```
+Add a PUBLIC marketing site in front of the app. Everything below is visible
+to people who are not signed in.
+
+FIRST, FIX THE REDIRECT
+Right now any unauthenticated visit bounces to sign in. That must stop for
+public routes. Signed-out visitors see the public pages normally; only the
+dashboard routes require a session.
+
+The public pages do NOT use the dashboard shell. No sidebar, no seller nav.
+They get their own simple header: the Commit wordmark on the left, and
+"Sign in" plus "Get started" on the right, both going to /auth.
+
+ROUTES
+  /              home
+  /how-it-works  the explainer
+  /stores        the full directory
+
+HOME
+
+A greeting and a short line saying what this is, then the directory.
+
+Data comes from GET /api/stores. This endpoint is PUBLIC — send no
+Authorization header, and do not require a session to call it.
+
+  {
+    newest:     [ { name, subdomain, url, productCount, coverImageUrl, openedAt } ],
+    topEarners: [ { name, subdomain, url, productCount, coverImageUrl, rank } ]
+  }
+
+Two sections:
+
+  "New stores"      -> from newest
+  "Highest earners" -> from topEarners, a horizontally scrolling row of cards
+
+topEarners is ordered by how much each seller has earned, best first, and
+carries NO amounts on purpose. Show the store and its rank. Never show,
+imply, estimate or invent a figure, and do not write anything like "top
+earning store making $X".
+
+BOTH SECTIONS CAN BE EMPTY, AND USUALLY WILL BE AT FIRST
+  - topEarners comes back empty until at least five stores qualify. When it
+    is empty, hide the whole section. Do not show an empty shelf or a
+    placeholder.
+  - newest currently has ONE store in it. The layout has to look deliberate
+    with one, three or thirty cards. Do not build a grid that only works
+    full.
+
+STORE LINKS DO NOT WORK YET
+The `url` field points at a subdomain on a domain that is not configured. For
+now render cards as non-clickable, or link to a store page inside this app if
+you build one. Do not send visitors to a dead link.
+
+/how-it-works
+
+The explainer for someone deciding whether to sign up. ONLY make the claims
+listed here. Do not invent features, numbers, timelines or testimonials.
+
+  - Starting a clothing brand normally means buying stock up front. This does
+    not.
+  - It is free. No subscription and no cut of sales.
+  - You design it, we handle printing, shipping and payments.
+  - Nothing is made until people order. You never buy inventory.
+  - A guided setup walks you through it step by step, from naming your brand
+    to opening your store.
+
+Do NOT say: how many days setup takes, how much anyone earns, how many
+sellers or stores exist, anything about samples or marketing tools, or any
+claim about speed of delivery.
+
+/stores
+
+The full directory. Same data, more of it: GET /api/stores?limit=24. Same
+rules about empty states and dead links.
+
+TONE
+The reader is someone who has thought about starting a clothing brand and
+assumed it was out of reach. Plain and direct. No hype, no growth-hacking
+voice, no exclamation marks. Do not use the word "empower".
+
+DO NOT
+- Do not send an Authorization header to /api/stores.
+- Do not show or imply any seller's earnings.
+- Do not put the dashboard nav on public pages.
+- Do not change the signed-in screens.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which
