@@ -380,7 +380,22 @@ ranked last.
 **Open: sellers have not agreed to being ranked publicly.** If that becomes a
 concern the fix is an opt-out flag on the store, not a change to the ranking.
 
-Not built: the pages themselves.
+**Live and verified 2026-08-19**, all through the VPN:
+
+| | |
+|---|---|
+| `/`, `/how-it-works`, `/stores` | 200 |
+| `/api/stores` unauthenticated | 200, no token needed |
+| CORS from the published origin | `Access-Control-Allow-Origin` present |
+| `newest` | 1 store (Demo Brand), real cover image from the Printful CDN |
+| `topEarners` | `[]`, correct below five qualifying stores |
+
+**The `url` field is currently unusable and structurally so.** `rootDomain()`
+reads `NEXT_PUBLIC_ROOT_DOMAIN`, which is set to the Vercel host, so store
+links come back as `https://demo.commit-store-xuav.vercel.app`. Vercel cannot
+wildcard `*.vercel.app` at all — `isStorefrontHost` already refuses those hosts
+for exactly this reason — so that address can never resolve, not merely does
+not yet. Store cards must stay unlinked until a real domain exists.
 
 ## 3. Storefront rendering — PARTIAL
 
@@ -798,8 +813,8 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Payouts | **DONE** |
 | Store settings | **TODO** — prompt 5 did not land; `/settings` 404s |
 | App shell / navigation | **DONE** — prompt 6 applied 2026-08-19 |
-| Guide as home, store after launch | **TODO** — prompt 8 in LOVABLE.md |
-| Public homepage and directory | **TODO** — prompt 9; in Lovable by decision |
+| Guide as home, store after launch | **DONE** — behaviour unverified, needs a signed-in look |
+| Public homepage and directory | **DONE** — `/`, `/how-it-works`, `/stores` live |
 | New product + catalog browse | **DONE** — `/products/new` live |
 
 All eight built as of 2026-08-16. Routes, verified live:
