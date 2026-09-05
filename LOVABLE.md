@@ -655,26 +655,35 @@ DO NOT
 - Do not change the signed-in screens.
 ```
 
-### 10. One home, not two
+### 10. One home, and a Launch tab that arrives later
 
 `/launch` and `/dashboard` render the same thing while the launch path is
-unfinished, so the nav has two entries for one page.
+unfinished, so the nav has two entries for one page. The fix is not to delete
+the route but to show it in the nav only once it stops being a duplicate.
 
 ```
-Collapse the launch path and the dashboard into a single home.
+There should only ever be one home in the navigation.
 
-/dashboard is the only home. Remove Launch from the navigation, and make
-/launch redirect to /dashboard so any old link still works.
+/dashboard is the home. /launch stays a real route and always renders the
+guide. What changes is when it appears in the nav.
 
-Nothing about the guide behaviour changes: while the launch path is
-unfinished, /dashboard shows the guide. Once it is finished, /dashboard shows
-the store.
+Drive it off GET /api/launch -> progress:
 
-BUT the guide must stay reachable after it is finished, or a seller can never
-look at it again. Put a quiet entry point on the finished dashboard, a link
-or a small collapsed panel, that opens the completed guide. Not a nav item,
-not a banner. Something they can find when they want it and ignore when they
-do not.
+  done < total   the guide IS the dashboard, so a Launch nav item would point
+                 at the page they are already on. Hide it. Nav shows Home,
+                 Designs, Products, Drops, Payouts, Settings.
+
+  done === total  the dashboard has become the store, so the guide now lives
+                 somewhere of its own. Show Launch in the nav, pointing at
+                 /launch and the completed guide.
+
+So the tab arrives rather than disappearing. A seller finishes the last step,
+their home turns into their store, and the guide moves into the nav where
+they can go back to it whenever they want.
+
+Do not hide /launch itself at any point. A seller who bookmarks it, or is
+sent a link, should always land on the guide. Only its presence in the
+navigation is conditional.
 ```
 
 ### 11. Visual direction
