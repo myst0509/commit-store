@@ -1033,6 +1033,59 @@ Six fixes. The first is the big one.
    say so.
 ```
 
+### 16. Dropdowns are unreadable
+
+The dark palette landed on pages but not on menus. Selects and dropdowns are
+rendering text and background at the same colour, so the options are invisible.
+
+```
+Fix the dropdowns. Text and background must never be the same colour.
+
+WHY IT HAPPENS
+Two different causes, and both need doing:
+
+1. Floating layers do not inherit the page. Popovers, select menus, dropdown
+   menus, comboboxes, dialogs and tooltips render in a portal at the top of
+   the document, so a dark background set on a page container never reaches
+   them. They fall back to their default light styling, or to no background
+   at all over dark text.
+
+   Set the surface colours on the components themselves, not on a wrapper.
+   If you are using shadcn/ui, that means SelectContent, DropdownMenuContent,
+   PopoverContent, DialogContent and CommandDialog each need an explicit
+   background, text colour and border.
+
+2. A native <select> is styled by the operating system. Setting a colour on
+   the <select> does not reach its <option> elements, which on some platforms
+   keep a white background. Either set background and colour on BOTH the
+   select and its options, or replace native selects with the component
+   version.
+
+APPLY THE TOKENS EVERYWHERE
+  menu background   surface   #0F1011
+  hovered item      surface-2 #16181A
+  text              text      #F7F8F8
+  secondary text    muted     #8A8F98
+  border            rgba(255,255,255,0.07)
+  selected item     accent    #5E6AD2
+
+CHECK THESE SPECIFICALLY, they are the ones that are broken now
+  the garment select on the price step
+  the design select
+  any product picker on the drops screen
+  date pickers
+  the account menu in the sidebar
+
+Then go through every menu in the app and confirm you can read it. A menu
+whose text matches its background is not a styling preference, it is an
+unusable control.
+
+WHILE YOU ARE THERE
+Check contrast on disabled and placeholder text too. Muted grey on a dark
+surface is the other place this goes wrong, and it usually goes unnoticed
+because the text is still faintly visible.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which
