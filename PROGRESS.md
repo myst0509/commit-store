@@ -629,6 +629,40 @@ The decision is a **pure function** (`decideRetry`) with its own unit tests,
 because `FULFILLMENT_LIVE` is false in every environment safe to test in — an
 end-to-end sweep short-circuits to "blocked" before backoff is ever reached.
 
+## 6. Launch path — the sequence could not be finished, fixed 2026-08-19
+
+`drop_date` requires `sample`, `order_sample` deliberately throws because
+subsidised samples are gated behind caps that do not exist, and `skipped`
+status was honoured by `resolveSteps` but **nothing could ever write it** —
+`performStep` always wrote `completed`.
+
+So no seller could get past step five. Drop date, waitlist and launch were
+unreachable, no store could ever go active through the product, and the switch
+to the store view on the dashboard could never fire.
+
+Fixed by marking `sample` `optional: true` and adding a skip:
+`POST /api/launch { step, skip: true }` records `skipped` without running the
+handler. Only optional steps allow it, prerequisites are still enforced, and a
+skip counts toward progress so the path can read as finished. `GET /api/launch`
+returns `optional` per step so the UI knows where to offer "Not now".
+
+**`sample` is the only optional step.** Whether `waitlist` should also be
+skippable is a product question, not an oversight.
+
+The other three handlers after `sample` were checked and are implemented:
+`schedule_drop`, `publish_waitlist` and `publish_store` all work.
+
+### `stores.theme` is not only a theme
+
+`publish_waitlist` writes `waitlistOpen` into the same jsonb column, and
+`normalizeTheme` rejects keys it does not know. A settings screen that reads
+the theme and sends it back would have started failing to save the moment a
+seller opened their waitlist.
+
+`GET /api/store` now returns only the five theme keys, and `PATCH` carries
+everything else across untouched. Worth moving `waitlistOpen` to its own column
+eventually; this stops the two colliding until then.
+
 ## 7. Drops and reservations — PARTIAL
 
 `lib/drops/resolve.ts` + `/api/cron/resolve-drops`, hourly.
