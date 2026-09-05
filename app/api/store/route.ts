@@ -1,7 +1,7 @@
 import { errorResponse, requireSeller } from "@/lib/auth/session";
 import { UserError } from "@/lib/errors";
 import { rootDomain, type StoreTheme } from "@/lib/store/resolve";
-import { normalizeBrandName, normalizeSubdomain, normalizeTheme } from "@/lib/store/settings";
+import { normalizeBrandName, normalizeSubdomain, normalizeTheme, THEME_KEYS } from "@/lib/store/settings";
 import { serviceClient } from "@/lib/supabase/client";
 
 /**
@@ -30,6 +30,25 @@ interface StoreRow {
   first_sale_at: string | null;
 }
 
+/**
+ * `stores.theme` is not purely a theme. The launch path's waitlist step writes
+ * `waitlistOpen` into the same jsonb column, and normalizeTheme rejects keys it
+ * does not know — so handing the raw column to a settings screen that sends it
+ * back would fail the moment a seller opened their waitlist.
+ *
+ * The API therefore shows only the five theme keys, and PATCH puts back
+ * whatever else was in there.
+ */
+function splitTheme(stored: Record<string, unknown> | null) {
+  const theme: Record<string, unknown> = {};
+  const other: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(stored ?? {})) {
+    if ((THEME_KEYS as readonly string[]).includes(k)) theme[k] = v;
+    else other[k] = v;
+  }
+  return { theme, other };
+}
+
 function present(row: StoreRow) {
   return {
     name: row.name,
@@ -37,7 +56,7 @@ function present(row: StoreRow) {
     status: row.status,
     url: `https://${row.subdomain}.${rootDomain()}`,
     customDomain: row.custom_domain,
-    theme: row.theme ?? {},
+    theme: splitTheme(row.theme as Record<string, unknown> | null).theme,
     // Changing a web address after people have the old one is a different
     // decision from changing it before launch, so the screen needs to know.
     hasSold: Boolean(row.first_sale_at),
@@ -98,9 +117,13 @@ export async function PATCH(req: Request): Promise<Response> {
     }
 
     if (body.theme !== undefined) {
-      // Replaces rather than merges. A partial merge makes "remove this colour"
-      // impossible to express, and the screen always holds the whole theme.
-      patch.theme = normalizeTheme(body.theme);
+      // Replaces the THEME keys rather than merging them. A partial merge makes
+      // "remove this colour" impossible to express, and the screen always holds
+      // the whole theme. Non-theme flags living in the same column, such as the
+      // waitlist step's waitlistOpen, are carried across untouched.
+      const current = await load(session.storeId);
+      const { other } = splitTheme(current.theme as Record<string, unknown> | null);
+      patch.theme = { ...other, ...normalizeTheme(body.theme) };
     }
 
     if (Object.keys(patch).length === 0) {

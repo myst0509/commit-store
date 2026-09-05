@@ -938,6 +938,101 @@ DO NOT
   and one belonging to another seller is rejected.
 ```
 
+### 15. Garments as a real page, and six fixes from using it
+
+Feedback from walking the guide, 2026-08-19. Two backend changes landed with
+this: steps can now be skipped, and `GET /api/launch` tells you which ones.
+
+```
+Six fixes. The first is the big one.
+
+1. GARMENTS ARE A PAGE, NOT A DROPDOWN OF IDS
+
+   Right now "Set your price" shows a select full of uuids like
+   fd2685d6-3ad4-4bdf-a770-0000375a22e3. Nobody can choose a t-shirt from
+   that.
+
+   Build /garments, a real browsing page.
+
+   GET /api/catalog
+     { blanks: [ { id, brand, model, decoration, imageUrl,
+                   fromUnitCostCents } ] }
+
+   A grid of cards: the stock photo from imageUrl, the brand and model as the
+   title, and "from $X" using fromUnitCostCents. That number already includes
+   our fee, so it is what the seller pays. Do not add anything to it.
+
+   Clicking one opens its detail:
+   GET /api/catalog?blank=<id>
+     { id, brand, model, description, decoration, imageUrl,
+       colors:     [ { name, hex, isDark } ],
+       printAreas: [ { placement, widthIn, heightIn, minDpi } ],
+       variants:   [ { id, color, size, inStock, unitCostCents } ] }
+
+   Show the colours, the sizes, what it costs, and what it can be printed
+   with. This is the page where someone decides what to make.
+
+2. PRICING HAPPENS ON THE GARMENT, NOT IN A MODAL OF UUIDS
+
+   From a garment's detail page, "Use this garment" opens the create flow with
+   that garment already chosen. The seller then picks a design and sets a
+   price with the garment visible in front of them.
+
+   POST /api/products { blankId, name, retailPriceCents, designId? }
+
+   The launch guide's price step links here rather than rendering its own
+   form. A step may hand off to a page when the work needs room; it just has
+   to come back to the home page afterwards, the same way the design step
+   does.
+
+3. PRICE IS DOLLARS, NOT CENTS
+
+   Never show a field labelled "Price (in cents)".
+
+   The input shows a "$" that is part of the field and cannot be deleted. They
+   type digits, and it formats as they go: 1250 becomes $12.50. Two decimal
+   places always.
+
+   Multiply by 100 and send whole cents as retailPriceCents. That conversion
+   is fine — the rule against pricing arithmetic is about fees, margins and
+   totals, which the server owns. Converting a typed amount into the unit the
+   API takes is not that.
+
+4. NAVIGATION IS A SIDE PANEL
+
+   Replace the bottom panel with a collapsible left sidebar, open by default,
+   with a toggle. Everything should be reachable from it rather than buried:
+   Home, Garments, Designs, Products, Drops, Payouts, Settings, and Launch
+   once it appears. On narrow screens it collapses to icons or slides over.
+
+5. THE DESIGN RESULT NEEDS TO BE READ, NOT FLASHED
+
+   After an upload succeeds the app shows the measurements and immediately
+   jumps to the next step, so nobody can read it.
+
+   Stay put. Show what came back — the measured pixels, the largest size it
+   prints at, any warnings — and let them press Continue. Moving on is their
+   decision, not a timer's.
+
+6. "NOT NOW" NOW WORKS, BECAUSE IT HAS SOMETHING TO CALL
+
+   Ordering a sample is not built, and until now nothing could get past it,
+   which made the rest of the path unreachable.
+
+   GET /api/launch now returns `optional: true` on steps that can be skipped.
+   Only "Order your sample" is.
+
+   Show "Not now" ONLY where optional is true. It calls:
+     POST /api/launch { step: "sample", skip: true }
+
+   The step comes back as "skipped", which counts as done, and the next one
+   unlocks. Render skipped differently from completed: it was passed over,
+   not achieved.
+
+   Do not show "Not now" on any other step. The server refuses it and will
+   say so.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which

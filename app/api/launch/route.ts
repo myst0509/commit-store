@@ -38,6 +38,8 @@ export async function GET(req: Request): Promise<Response> {
         status: s.status,
         blockedBy: s.blockedBy,
         completedAt: s.completedAt,
+        // Whether "Not now" should be offered on this step.
+        optional: Boolean(s.optional),
       })),
     });
   } catch (e) {
@@ -51,6 +53,7 @@ export async function POST(req: Request): Promise<Response> {
     const body = (await req.json().catch(() => ({}))) as {
       step?: string;
       input?: Record<string, unknown>;
+      skip?: boolean;
     };
 
     if (!body.step) {
@@ -61,6 +64,7 @@ export async function POST(req: Request): Promise<Response> {
       session.storeId,
       body.step as StepKey,
       body.input ?? {},
+      body.skip === true,
     );
 
     const state = await getLaunchState(session.storeId);

@@ -24,6 +24,16 @@ export interface StepDefinition {
   title: string;
   /** Dispatch target in ./actions. */
   actionKey: string;
+  /**
+   * Can a seller move past this without doing it?
+   *
+   * Only `sample` is, and deliberately: order_sample is not built, because a
+   * sample is a real vendor order and PROJECT.md gates subsidised samples
+   * behind caps and a kill switch that do not exist. Without a way past it,
+   * drop_date requires sample and the whole back half of the path is
+   * unreachable — nobody could ever finish, or open a store.
+   */
+  optional?: boolean;
   /** Must be completed before this unlocks. */
   requires: StepKey[];
   /** Shown under the button. States the outcome, not advice. */
@@ -58,7 +68,7 @@ export const STEPS: StepDefinition[] = [
   },
   {
     key: "sample", dayIndex: 9, title: "Order your sample",
-    actionKey: "order_sample", requires: ["price"],
+    actionKey: "order_sample", requires: ["price"], optional: true,
     outcome: "Sends one unit to you, so you see it before anyone buys",
   },
   {

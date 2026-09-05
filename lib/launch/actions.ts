@@ -323,6 +323,7 @@ export async function performStep(
   storeId: string,
   stepKey: StepKey,
   input: Record<string, unknown> = {},
+  skip = false,
 ): Promise<{ step: StepKey; result: Record<string, unknown> }> {
   const def = STEP_BY_KEY[stepKey];
   if (!def) throw new Error(`Unknown step: ${stepKey}`);
@@ -331,6 +332,27 @@ export async function performStep(
   const step = state.steps.find((s) => s.key === stepKey)!;
 
   if (step.status === "locked") throw new StepBlockedError(stepKey, step.blockedBy);
+
+  // Skipping records the step as passed without running its action. Only
+  // steps marked optional allow it, so this cannot be used to jump the queue
+  // — resolveSteps still gates on prerequisites, and a skipped step counts as
+  // done for the steps that follow it.
+  if (skip) {
+    if (!def.optional) {
+      throw new UserError(`"${def.title}" cannot be skipped`);
+    }
+
+    const sb = serviceClient();
+    await sb.from("store_progress").upsert({
+      store_id: storeId,
+      step_key: stepKey,
+      status: "skipped",
+      completed_at: new Date().toISOString(),
+      result: {},
+    }, { onConflict: "store_id,step_key" });
+
+    return { step: stepKey, result: { skipped: true } };
+  }
 
   const handler = HANDLERS[def.actionKey];
   if (!handler) throw new Error(`No handler for action "${def.actionKey}"`);

@@ -94,3 +94,39 @@ describe("subdomain and slug generation", () => {
     assert.equal(toSlug("!!!"), "product");
   });
 });
+
+describe("skipping a step", () => {
+  // order_sample is not built: a sample is a real vendor order and PROJECT.md
+  // gates subsidised samples behind caps and a kill switch that do not exist.
+  // drop_date requires sample, so without a way past it the back half of the
+  // path is unreachable and no store can ever open.
+  it("marks only the sample step optional", () => {
+    const optional = STEPS.filter((s) => s.optional).map((s) => s.key);
+    assert.deepEqual(optional, ["sample"]);
+  });
+
+  it("treats a skipped step as done, so the next one unlocks", () => {
+    const states = resolveSteps({
+      name: done(), design: done(), blank: done(), price: done(),
+      sample: { status: "skipped", completedAt: "2026-08-19T00:00:00Z" },
+    });
+    assert.equal(states.find((s) => s.key === "drop_date")!.status, "available");
+  });
+
+  it("counts a skip toward progress, or the path could never read as finished", () => {
+    const all = Object.fromEntries(
+      STEPS.map((s) => [s.key, s.key === "sample"
+        ? { status: "skipped" as const, completedAt: "2026-08-19T00:00:00Z" }
+        : done()]),
+    );
+    const states = resolveSteps(all);
+    assert.equal(progressSummary(states).done, STEPS.length);
+    assert.equal(progressSummary(states).percent, 100);
+  });
+
+  it("leaves every other step required", () => {
+    for (const s of STEPS) {
+      if (s.key !== "sample") assert.notEqual(s.optional, true, s.key);
+    }
+  });
+});
