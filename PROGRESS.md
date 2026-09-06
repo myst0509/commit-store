@@ -854,7 +854,7 @@ genuinely per-order.
 
 | | Estimate | Why it is a guess |
 |---|---|---|
-| **Sales tax compliance** | $50–100/mo | We are merchant of record. Avalara or TaxJar class tooling plus registration wherever we cross nexus. PROJECT.md calls MoR the largest unhedged assumption; this is what it costs. |
+| ~~Sales tax compliance~~ | **researched, see below** | Was guessed at $50–100/mo. That was wrong, and wrong in our favour. |
 | **Chargebacks** | ~$0.15/order | $15 a dispute at a 1% rate. Above 1.5% Stripe can terminate us, so the real risk is existential rather than linear. |
 | Legal review | $1–5k once | The service fee needs it; several US states restrict surcharging. |
 | Email at scale | $0–20/mo | Resend is free to 3k/month. Not built. |
@@ -862,9 +862,52 @@ genuinely per-order.
 | Support time | your hours | The largest real cost early, and the one nobody budgets. |
 | Fraud losses | unknown | Free storefronts plus card processing is a known vector. |
 
-**Sales tax is the one that could change the business.** At $4.52 an order a
-$75/month compliance tool needs about 17 orders a month purely to pay for
-itself, which is more than the entire hosting bill.
+### Sales tax, researched 2026-08-19
+
+The earlier $50–100/month guess was wrong. There is no fixed cost at our scale.
+
+**Stripe Tax Basic has no monthly minimum**: "0.5% per transaction, where
+you're registered to collect taxes". On a $36.75 order that is about 18c.
+Stripe Tax Complete, which bundles registrations and filings, starts at
+$90/month for 2 registrations a year and 200 transactions a month — worth
+having only once we are registered in several states.
+
+| Scenario | Orders/yr | US gross | Tax tooling/yr | Share of margin |
+|---|---|---|---|---|
+| Early | 180 | $6,615 | $33 | 4.1% |
+| Growing | 1,800 | $66,150 | $331 | 4.1% |
+| Working | 12,000 | $441,000 | $2,205 | 4.1% |
+
+So it is **a flat ~4% of margin, not a fixed monthly cost**, and it only
+applies where we are actually registered.
+
+**Thresholds are per state, and we are far from them.** Most states use
+$100,000 in sales or 200 transactions; several are dropping the transaction
+test. California's marketplace facilitator threshold is $500,000. Spread across
+50 states, even the Working scenario puts roughly $53,000 and 1,440
+transactions through California, our largest single state:
+
+- $100,000 per-state sales threshold: **not crossed even at 1,000 orders a
+  month**
+- California's $500,000: nowhere close
+- 200-transaction thresholds: crossed in the larger states somewhere around the
+  Growing scenario, and only in the 18 states that still count transactions
+
+**What is actually owed sooner is home-state nexus.** Physical presence creates
+nexus regardless of thresholds, so a California registration is the real first
+obligation, and it is a free seller's permit plus periodic filing rather than a
+software subscription.
+
+**Open, and worth an accountant rather than more reading:** whether Printful
+holding and shipping goods on our behalf creates nexus in their fulfilment
+states. Nothing is manufactured before it is ordered, so we never hold
+inventory anywhere, which weakens the usual 3PL-inventory argument — but that
+is a judgement call with real liability attached, and it is the same
+conversation as the merchant-of-record question PROJECT.md already flags.
+
+Sources: stripe.com/tax/pricing, and state marketplace-facilitator summaries.
+None of this is tax advice; confirm before it matters, which is before the
+first live charge.
 
 ## Open decisions
 
