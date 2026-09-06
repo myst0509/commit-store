@@ -65,6 +65,9 @@ export async function GET(req: Request): Promise<Response> {
     const orderRows = orders.data ?? [];
 
     return Response.json({
+      // Null unless an OAuth provider gave us a real name. The UI greets by
+      // name only when this is present, and never invents one.
+      seller: { name: session.name, email: session.email },
       store: {
         name: session.storeName,
         subdomain: session.subdomain,

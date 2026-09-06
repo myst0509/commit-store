@@ -1295,8 +1295,10 @@ While the guide is unfinished, Home IS the guide, with a short line above it:
   Your brand is 33% ready
   Continue where you left off, next up: Choose your garment
 
-Do NOT greet by name. There is no name: authentication carries an email
-address and nothing else. Do not invent a display name field.
+Greet by name ONLY when there is one. GET /api/dashboard returns
+seller: { name, email }, where name is null unless the person signed in with
+Google and consented. Null means no greeting, not a fallback: never derive one
+from the email address. See prompt 19.
 
 Do NOT add a "Recent activity" feed. No endpoint returns an event history and
 it would have to be fabricated.
@@ -1414,6 +1416,74 @@ a step, which is the exact bug prompt 13 fixed.
 
 *A hardcoded domain.* `yourbrand.commit.store` does not exist; no domain is
 bought and `NEXT_PUBLIC_ROOT_DOMAIN` is still the Vercel host.
+
+### 19. Sign in with Google, and greeting by name
+
+Added 2026-08-19. `GET /api/dashboard` now returns a `seller` object:
+
+```
+seller: { name, email }
+```
+
+`name` comes from the OAuth provider's metadata and is **null** for
+email-and-password signups, because nothing ever asked them. It is deliberately
+NOT derived from the email address: `sohamp1005@gmail.com` would yield
+"Sohamp1005", and a mangled address is a worse greeting than none.
+
+**Requires Supabase configuration first.** In the Supabase dashboard under
+Authentication → Providers, enable Google and paste in a client ID and secret
+from a Google Cloud OAuth consent screen. Until that is done the button will
+not work, and nothing about the prompt below can be tested.
+
+```
+Add Google sign-in, and a greeting that only appears when it is real.
+
+1. GOOGLE SIGN-IN
+
+On /auth, add "Continue with Google" above the email and password fields,
+with a divider between them. Use Supabase's OAuth flow with the google
+provider, redirecting back to the app.
+
+Keep email and password exactly as it is. This is an additional way in, not a
+replacement, and existing accounts must keep working.
+
+Google asks the person to share their name and email. When they agree,
+Supabase stores the name in the user's metadata and our API returns it.
+
+2. THE GREETING
+
+GET /api/dashboard now returns:
+  seller: { name, email }
+
+name is a real name or null. There is no third case.
+
+  name present   "Good morning, Soham"
+  name null      no greeting at all
+
+Do NOT fall back to the email address, to the part before the @, or to any
+capitalised or prettified version of it. Do not write "Good morning, there" or
+"Good morning, friend". If we do not know, say nothing and start with the
+content.
+
+Time of day from the browser: morning, afternoon, evening.
+
+3. WHAT TO SHOW WHEN THERE IS NO NAME
+
+The store name is always known, so lead with the work instead of the person:
+
+  Your brand is 33% ready
+  Continue where you left off, next up: Choose your garment
+
+That line is more useful than a greeting anyway, so it should appear whether
+or not a name exists. The greeting sits above it when we have one.
+
+DO NOT
+- Do not invent, guess or derive a name.
+- Do not add a "what should we call you?" prompt to the dashboard. If the name
+  is worth collecting from password signups, that is a decision to make once,
+  not a banner to nag with.
+- Do not remove email and password sign-in.
+```
 
 ### The public directory endpoint
 

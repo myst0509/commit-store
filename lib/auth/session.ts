@@ -19,6 +19,18 @@ import { serviceClient } from "@/lib/supabase/client";
 export interface SellerSession {
   userId: string;
   email: string | null;
+  /**
+   * The person's own name, when we actually know it.
+   *
+   * Supplied by an OAuth provider such as Google, which returns it in the
+   * user's metadata after they consent. Null for email-and-password signups,
+   * because nothing ever asked them.
+   *
+   * NOT derived from the email address. "sohamp1005@gmail.com" would yield
+   * "Sohamp1005", and greeting someone by a mangled version of their address
+   * is worse than not greeting them at all.
+   */
+  name: string | null;
   storeId: string;
   storeName: string;
   subdomain: string;
@@ -71,9 +83,17 @@ export async function requireSeller(req: Request): Promise<SellerSession> {
 
   if (!store) throw new AuthError("You do not have a store yet", 404);
 
+  // Google returns `full_name` and `name`; other providers vary. Take the
+  // first that is actually a non-empty string.
+  const metadata = (data.user.user_metadata ?? {}) as Record<string, unknown>;
+  const name = [metadata.full_name, metadata.name]
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .find((v) => v.length > 0) ?? null;
+
   return {
     userId: data.user.id,
     email: data.user.email ?? null,
+    name,
     storeId: store.id,
     storeName: store.name,
     subdomain: store.subdomain,
