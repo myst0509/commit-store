@@ -17,6 +17,26 @@ import { serviceClient } from "@/lib/supabase/client";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Decoration codes are stored as an array and were being rendered straight
+ * out, which concatenated into "dtgembroiderydtf" on screen. These are the
+ * names a seller would recognise.
+ */
+const DECORATION_LABELS: Record<string, string> = {
+  dtg: "Direct-to-garment print",
+  dtf: "Transfer print",
+  screen_print: "Screen print",
+  embroidery: "Embroidery",
+  applique: "Appliqué",
+  sublimation: "Sublimation",
+};
+
+function decorationLabel(codes: string[] | null): string {
+  return (codes ?? [])
+    .map((c) => DECORATION_LABELS[c] ?? c)
+    .join(" · ");
+}
+
 export async function GET(req: Request): Promise<Response> {
   try {
     await requireSeller(req);
@@ -28,7 +48,7 @@ export async function GET(req: Request): Promise<Response> {
     if (blankId) {
       const [blank, colors, placements, variants] = await Promise.all([
         sb.from("catalog_blanks")
-          .select("id, brand, model, description, supported_decoration, image_url, is_enabled")
+          .select("id, brand, model, display_name, garment_type, description, supported_decoration, image_url, is_enabled")
           .eq("id", blankId).single(),
         sb.from("catalog_colors").select("name, hex, is_dark").eq("blank_id", blankId),
         sb.from("catalog_placements")
@@ -47,6 +67,9 @@ export async function GET(req: Request): Promise<Response> {
         id: blank.data.id,
         brand: blank.data.brand,
         model: blank.data.model,
+        name: blank.data.display_name || blank.data.model,
+        garmentType: blank.data.garment_type,
+        decorationLabel: decorationLabel(blank.data.supported_decoration),
         description: blank.data.description,
         decoration: blank.data.supported_decoration,
         imageUrl: blank.data.image_url,
@@ -72,22 +95,37 @@ export async function GET(req: Request): Promise<Response> {
     // The list.
     const { data: blanks } = await sb
       .from("catalog_blanks")
-      .select("id, brand, model, supported_decoration, image_url")
+      .select("id, brand, model, display_name, garment_type, supported_decoration, image_url")
       .eq("is_enabled", true)
       .order("brand");
 
     const ids = (blanks ?? []).map((b) => b.id);
-    const { data: variants } = await sb
-      .from("catalog_variants")
-      .select("blank_id, base_cost_cents")
-      .in("blank_id", ids);
 
+    // Paged deliberately. PostgREST caps a response at 1000 rows by default,
+    // and an unpaged fetch silently returned exactly 1000 — enough for six of
+    // twelve blanks, so half the catalog showed no price at all and nothing
+    // errored. Enabled blanks alone hold well over 2,000 variants.
     const cheapest = new Map<string, number>();
-    for (const v of variants ?? []) {
-      const current = cheapest.get(v.blank_id);
-      if (current === undefined || v.base_cost_cents < current) {
-        cheapest.set(v.blank_id, v.base_cost_cents);
+    const PAGE = 1000;
+
+    for (let from = 0; ; from += PAGE) {
+      const { data: page, error: pageError } = await sb
+        .from("catalog_variants")
+        .select("blank_id, base_cost_cents")
+        .in("blank_id", ids)
+        .range(from, from + PAGE - 1);
+
+      if (pageError) throw pageError;
+      if (!page?.length) break;
+
+      for (const v of page) {
+        const current = cheapest.get(v.blank_id);
+        if (current === undefined || v.base_cost_cents < current) {
+          cheapest.set(v.blank_id, v.base_cost_cents);
+        }
       }
+
+      if (page.length < PAGE) break;
     }
 
     return Response.json({
@@ -95,7 +133,14 @@ export async function GET(req: Request): Promise<Response> {
         id: b.id,
         brand: b.brand,
         model: b.model,
+        // "Unisex Staple T-Shirt" rather than "3001". Falls back to the model
+        // for anything cached before the catalogue was re-synced.
+        name: b.display_name || b.model,
+        garmentType: b.garment_type,
         decoration: b.supported_decoration,
+        // Already joined and readable. Rendering the raw array concatenated
+        // gave "dtgembroiderydtf" on screen.
+        decorationLabel: decorationLabel(b.supported_decoration),
         imageUrl: b.image_url,
         fromUnitCostCents: cheapest.has(b.id)
           ? cheapest.get(b.id)! + PLATFORM_FEE_CENTS

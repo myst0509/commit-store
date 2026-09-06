@@ -70,7 +70,17 @@ export interface CatalogBlank {
   /** Vendor's identifier. Opaque to application code. */
   externalId: string;
   brand: string;          // "Independent Trading Co."
-  model: string;          // "SS4500 Midweight Hoodie"
+  model: string;          // "3001" — often just the SKU, which is why displayName exists
+  /**
+   * The human product name, without the brand and SKU.
+   *
+   * "Unisex Staple T-Shirt", not "Bella + Canvas 3001". `model` is frequently a
+   * bare number, which tells a first-time seller nothing about what they are
+   * looking at. Null when the vendor has no better name than the model.
+   */
+  displayName: string | null;
+  /** Vendor garment type: "T-SHIRT", "HOODIE". Null if not supplied. */
+  garmentType: string | null;
   description: string | null;
   colors: CatalogColor[];
   sizes: string[];

@@ -109,6 +109,8 @@ async function syncBlank(
         external_id: blank.externalId,
         brand: blank.brand,
         model: blank.model,
+        display_name: blank.displayName,
+        garment_type: blank.garmentType,
         description: blank.description,
         supported_decoration: blank.supportedDecoration,
         image_url: blank.imageUrl,

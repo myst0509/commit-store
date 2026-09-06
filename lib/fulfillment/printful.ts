@@ -73,6 +73,20 @@ const MAX_RETRIES = 3;
  */
 const EXTERNAL_ID_MAX = 32;
 
+/**
+ * Printful names products "Unisex Staple T-Shirt | Bella + Canvas 3001".
+ * Everything after the pipe is the brand and SKU, which already have their own
+ * columns, so keeping it would print the brand twice in the UI.
+ *
+ * Returns null when nothing useful is left, so callers can fall back to the
+ * model rather than rendering an empty string.
+ */
+export function humanName(raw: string | null): string | null {
+  if (!raw) return null;
+  const name = raw.split("|")[0].trim();
+  return name.length ? name : null;
+}
+
 export class PrintfulProvider implements FulfillmentProvider {
   readonly id = "printful" as const;
 
@@ -293,9 +307,14 @@ export class PrintfulProvider implements FulfillmentProvider {
       // Hoodie / All-Over Print Recycled Unisex Hoodie"), so an unbranded blank
       // gets an empty brand and the UI shows the model alone.
       brand: product.brand ?? "",
-      // `title` is the marketing name, `model` the garment SKU. Both exist; model is
-      // what a seller recognizes ("SS4500 Midweight Hoodie").
+      // `model` is the garment SKU. It reads well on some blanks ("SS4500
+      // Midweight Hoodie") and is a bare number on most ("3001"), which is why
+      // displayName exists rather than this being reworded.
       model: product.model || product.title || "",
+      // "Unisex Staple T-Shirt | Bella + Canvas 3001" -> "Unisex Staple T-Shirt".
+      // The brand and SKU after the pipe already have their own columns.
+      displayName: humanName(product.name ?? product.title ?? null),
+      garmentType: product.type ?? product.type_name ?? null,
       description: product.description ?? null,
       colors: [...colors.values()],
       sizes: [...sizes],
@@ -1081,6 +1100,8 @@ interface PfCatalogProduct {
   id: number;
   type_name?: string;
   title?: string;
+  name?: string;
+  type?: string;
   brand?: string | null;
   model?: string;
   image?: string;

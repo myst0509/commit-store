@@ -334,6 +334,10 @@ export class ApliiqProvider implements FulfillmentProvider {
       // They ship no brand field; the SKU is the manufacturer style code.
       brand: p.SKU ?? "",
       model: p.Name ?? "",
+      // Apliiq names products properly to begin with, so there is nothing to
+      // strip. They publish no garment type.
+      displayName: p.Name ?? null,
+      garmentType: null,
       description: p.Description || null,
       colors,
       sizes: (p.Sizes ?? []).map((s) => s.Name),
