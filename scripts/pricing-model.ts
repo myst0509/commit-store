@@ -9,7 +9,7 @@
  * fee changes how the platform's margin behaves as sellers raise their prices.
  */
 
-import { computeEconomics, stripeFee } from "../lib/pricing";
+import { computeEconomics, stripeFee, PLATFORM_FEE_CENTS } from "../lib/pricing";
 import { args } from "./_env";
 
 const a = args();
@@ -19,7 +19,10 @@ const BLANK_CENTS = 1169;
 const SHIP_CENTS = 475;
 const TAX_CENTS = 42;
 
-const sellerCost = Number(a.get("cost") ?? 1800);
+// Derived from the real fee rather than pinned. It used to be a hard-coded
+// 1800, which was BLANK_CENTS + a 631 fee — so when the fee dropped to 500 the
+// script kept reporting the old economics and nobody would have noticed.
+const sellerCost = Number(a.get("cost") ?? BLANK_CENTS + PLATFORM_FEE_CENTS);
 const usd = (c: number) => `${c < 0 ? "-" : ""}$${Math.floor(Math.abs(c) / 100)}.${String(Math.abs(c) % 100).padStart(2, "0")}`;
 const pad = (s: string, n: number) => s.padStart(n);
 
