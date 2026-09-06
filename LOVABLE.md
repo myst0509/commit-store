@@ -1152,6 +1152,269 @@ values must match in both places. Do not build two different editors; build one
 and use it in both.
 ```
 
+### 18. The full UI refinement pass
+
+A rewrite of a ChatGPT-authored brief, 2026-08-19. Its design direction was
+sound and is kept almost intact. What it got wrong was the data: it described
+several screens for things this API does not return, and it quietly reversed
+two fixes already made. Corrections are noted after the prompt.
+
+```
+Refine the UI of the existing Commit application.
+
+This is a UI and UX pass. Do NOT rebuild the product, remove functionality,
+change business logic, alter which API endpoints are called, or change the
+guide's steps or copy.
+
+THE FEELING
+Someone using this is building a clothing company, not filling in a setup
+checklist. Minimal, premium, technical, calm, fast, precise. Slightly
+editorial. Linear as inspiration for hierarchy, spacing, typography, density
+and interaction, not for branding, logo or layouts.
+
+Avoid: generic SaaS template, Shopify clone, crypto dashboard, a screen full
+of cards, a traditional e-commerce admin panel.
+
+COLOUR
+Dark first, and already partly in place. Keep it and refine.
+  app background   #08090A
+  surfaces         #0D0E10, #111214
+  borders          very subtle, hairline, low-alpha white
+  text             near white
+  muted            grey
+  faint            darker grey
+  accent           the existing indigo, used sparingly
+
+Accent belongs on primary buttons, active nav, progress, links and focus
+states. Nothing else. Do not flood the interface with it.
+
+TYPOGRAPHY
+A clean modern sans in the spirit of Inter. Confident page titles, noticeably
+smaller and muted supporting text. Few weights. Establish hierarchy with
+spacing and type rather than by putting a border around everything.
+
+FEWER CARDS
+This is the biggest visual change. The interface currently leans on large
+bordered rectangles. Replace most of them with spacing, subtle separators and
+compact rows. Use a card only where it groups things meaningfully.
+
+Dense enough for a power user, simple enough for a beginner.
+
+NAVIGATION
+A persistent, quiet left sidebar on desktop. Narrow, small line icons, very
+subtle active state. It should not compete with the workspace.
+
+  Commit
+  ----------
+  Home
+  Garments
+  Designs
+  Products
+  Drops
+  Payouts
+  ----------
+  Settings
+
+IMPORTANT: there is no permanent "Guide" item. While the launch path is
+unfinished the guide IS Home, so a Guide entry would point at the page the
+seller is already on. A "Launch" item appears in the nav only once
+progress.done equals progress.total, when Home becomes the store. That
+behaviour already exists, so keep it.
+
+On tablet the sidebar narrows; on mobile it collapses to the existing
+slide-out behaviour, visually refined. Do not just shrink the desktop layout.
+
+HEADER
+A consistent header: Commit on the left, contextual location in the middle,
+and search, help and the user menu on the right. Subtle breadcrumbs, not large
+decorative headings.
+
+COMMAND MENU
+Add a global command menu on Cmd+K and Ctrl+K: jump to any section, plus
+Create product, Upload design, Create drop.
+
+THE GUIDE
+Twelve steps in three phases, exactly as they are. Do not change the steps,
+their order, or their wording.
+
+  MAKE SOMETHING    name, design, garment, price
+  BUILD YOUR STORE  style, story, links, sample
+  START SELLING     bank, drop date, waitlist, launch
+
+Present it as a project roadmap rather than a column of big cards.
+
+  Getting your brand open
+  Three phases, twelve steps. Finish what is open and the next part unlocks.
+
+  4 / 12                                              33%
+  [========================                        ]
+
+Keep the progress bar thin.
+
+Each phase reads as a section, numbered, with its blurb and its own count:
+
+  01  MAKE SOMETHING
+      A design on a real garment, priced so you earn on every sale.
+      4 / 4
+  -----------------------------------------
+
+Steps are compact rows, not full-width cards:
+
+  01   Name your brand                                    >
+       Creates your storefront
+
+  [lock]  Upload your first design
+       Checks your artwork is high enough resolution to print
+       LOCKED - Complete "Name your brand" first
+
+Locked steps stay readable. Muted, not invisible. The seller should see what
+it is, why it matters and what is blocking it.
+
+Status marks small and quiet: an open circle for available, a half circle for
+in progress, a check for complete, a padlock for locked. No large circles, no
+colourful badges.
+
+Hover changes the background slightly and brings the arrow forward. Fast,
+subtle.
+
+CRITICAL: STEPS OPEN IN PLACE
+Pressing a step must NOT navigate to another page. The form opens on the home
+page: the row expands, or a modal for the ones needing room like the garment
+picker. On success, refetch GET /api/launch and update the board where it
+stands.
+
+There are no separate step pages and no /launch/<step> routes. Breadcrumbs
+should reflect the section, not imply a step is its own page.
+
+The ONE exception: "Upload your first design" goes to /designs, because
+uploading is its own flow, and returns to Home afterwards.
+
+HOME
+While the guide is unfinished, Home IS the guide, with a short line above it:
+
+  Your brand is 33% ready
+  Continue where you left off, next up: Choose your garment
+
+Do NOT greet by name. There is no name: authentication carries an email
+address and nothing else. Do not invent a display name field.
+
+Do NOT add a "Recent activity" feed. No endpoint returns an event history and
+it would have to be fabricated.
+
+Once the guide is finished, Home becomes the store: earnings, recent orders,
+products, and a link to the live storefront.
+
+GARMENTS
+A clean library, table and grid hybrid rather than large cards.
+GET /api/catalog returns exactly:
+  { id, brand, model, decoration, imageUrl, fromUnitCostCents }
+
+  Garment                     Decoration        From
+  Bella + Canvas 3001         DTG, embroidery   $18.00
+  Gildan 5000                 DTG, DTF          $15.56
+
+There is no "type" field and no availability status, so do not invent columns.
+Keep the price: it is what a seller most needs to see. fromUnitCostCents
+already includes our fee, so render it as sent.
+
+DESIGNS
+A clean grid, generous spacing. GET /api/designs returns filename, image,
+dimensions, created date and a review status. Show those.
+
+Do NOT show "products using this design". That relationship is not returned by
+any endpoint.
+
+PRODUCTS
+The seller's catalogue. GET /api/products returns
+  { id, name, slug, status, createdAt, variantCount, priceCents, unitCostCents }
+
+A product spans EVERY colour and size, not one. Do not present it as a single
+colourway. priceCents and unitCostCents are the lowest across enabled
+variants.
+
+DROPS
+Read this carefully, because it is the screen most likely to be built wrong.
+
+A drop here is ONE product with a reservation threshold and a closing date. It
+is not a collection, not a season, and not a set of products. One open drop per
+product, enforced by the server.
+
+GET /api/drops returns
+  { id, product: { id, name, slug }, status, thresholdUnits, reservedUnits,
+    unitsRemaining, percentToThreshold, opensAt, closesAt, resolvedAt }
+
+Present each as a project-style row:
+
+  First Tee
+  18 of 25 reserved, 7 to go
+  [==============      ]  72%
+  Closes in 6 days
+
+percentToThreshold is progress toward the number of reservations that triggers
+production. It is NOT "percent ready" and must never be labelled that way.
+Mislabelling it tells a seller their launch is nearly prepared when it actually
+means customers are nearly enough to start manufacturing.
+
+Do NOT build: an audience tab, follower counts, waitlist member counts, launch
+teasers, social post scheduling, or a content section. None of that data
+exists.
+
+PAYOUTS
+Keep the functionality. Make it feel like a financial product.
+
+  READY FOR YOU     $0.00
+  WAITING TO CLEAR  $0.00
+  EARNED ALL TIME   $0.00
+
+Compact horizontal sections, not giant empty boxes. Keep the explanation that
+money clears 14 days after delivery, as secondary text.
+
+MENUS AND DROPDOWNS
+Every popover, select, dropdown, dialog and tooltip needs an explicit
+background, text colour and border. They render in a portal, so a background
+set on a page container never reaches them, and they are currently unreadable
+in places. Native select options are styled by the operating system, so set
+colours on the options too, or use the component version.
+
+PRICES
+Any price input shows a dollar sign that is part of the field and cannot be
+deleted, formats as they type, and sends whole cents.
+
+MICROINTERACTIONS
+Fast and subtle, 100 to 250ms: sidebar active state, row hover, progress
+animation, button hover, step completion, the unlock when a prerequisite
+finishes. Nothing loops, nothing is decorative.
+
+DO NOT
+- Do not change any API call, request shape, or piece of business logic.
+- Do not rename or reorder the guide's steps, or rewrite their copy.
+- Do not restyle seller storefronts. Those are themed by each seller through
+  /settings and are a separate surface.
+- Do not invent data. If a screen needs a field, check it is in the response
+  first. Several ideas in earlier briefs described data this API does not
+  return.
+```
+
+**What was corrected from the original brief, and why**
+
+*Invented data.* The Drops section described collections of twelve products,
+an audience tab, follower and waitlist counts, launch teasers and social
+scheduling. A drop is one product with a threshold. It also labelled
+`percentToThreshold` as "82% ready", which inverts its meaning. Garments gained
+a "Type" and "Status" column that do not exist and lost the price, which is the
+column that matters. Products were shown as a single colourway. Designs claimed
+a products-using-this-design relationship no endpoint returns. Home greeted the
+seller by name, and there is no name, only an email. It also added an activity
+feed with no source.
+
+*Two decisions it reversed.* It put a permanent "Guide" item in the nav, which
+prompt 10 deliberately removed because the guide is Home until the path is
+finished. And its breadcrumbs and step pages implied navigating away to perform
+a step, which is the exact bug prompt 13 fixed.
+
+*A hardcoded domain.* `yourbrand.commit.store` does not exist; no domain is
+bought and `NEXT_PUBLIC_ROOT_DOMAIN` is still the Vercel host.
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which
