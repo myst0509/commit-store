@@ -947,6 +947,24 @@ Sources: stripe.com/tax/pricing, and state marketplace-facilitator summaries.
 None of this is tax advice; confirm before it matters, which is before the
 first live charge.
 
+### Frontend verified live 2026-08-19
+
+All twelve routes respond, the API answers, and the light theme is measured
+correct. What is built:
+
+| | |
+|---|---|
+| Public | `/`, `/how-it-works`, `/stores` |
+| Auth | `/auth` |
+| App | `/dashboard`, `/garments`, `/designs`, `/products`, `/drops`, `/settings`, `/settings/payouts`, `/launch` |
+
+**Prompt 19 did not land.** `/auth` has email and password only — no Google
+button, and no reference to Google anywhere in the DOM. Expected, since Google
+was never enabled in Supabase, so there was nothing for the button to call.
+Not a loss: prompt 20 asks the seller what to call them, which covers the
+greeting for every account regardless of how it signed up. Google remains a
+convenience to add whenever the provider is configured.
+
 ## Open decisions
 
 - **Who pays for shipping.** The largest open question, and it invalidates the
@@ -1047,9 +1065,9 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Steps in place, garments page, side nav, $ prices | **TODO** — prompt 15 |
 | Three-phase guide | **DONE** — prompt 17 |
 | Full UI refinement (corrected ChatGPT brief) | **TODO** — prompt 18, supersedes 12/15/16 |
-| Google sign-in | **TODO** — prompt 19; Supabase provider config first |
+| Google sign-in | **NOT LANDED** — prompt 19 run, no button on `/auth` |
 | "What should we call you?" | **DONE** — prompt 20 |
-| Density and motion pass | **TODO** — prompt 21 |
+| Density and motion pass | **DONE** — prompt 21 |
 | Contrast, hierarchy, conversion | **TODO** — prompt 22 |
 | Light theme + conversion | **DONE** — prompt 24, verified live 2026-08-19 |
 
