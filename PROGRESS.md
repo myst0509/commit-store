@@ -852,13 +852,24 @@ fee, so dropping the fee changed nothing in its output. Now derived from
 `PLATFORM_FEE_CENTS`. A model with a constant baked into it stops modelling the
 moment that constant moves.
 
-**PROJECT.md and `lib/pricing.ts` disagree here, and it is worth $1.37 an
-order.** PROJECT.md records the service fee as settled on 2026-08-11, with the
-customer covering Stripe. `PASS_CARD_FEES_TO_CUSTOMER` is `false`, with a
-comment arguing a clean two-line checkout is worth more than ~95c for a brand
-nobody has heard of. The service-fee model also holds margin FLAT at $5.89
-whether a seller prices at $18 or $100, where the current one decays to $2.55.
-Unresolved, and the largest single lever in the model.
+**Resolved 2026-08-19: `PASS_CARD_FEES_TO_CUSTOMER` is `true`.** PROJECT.md had
+recorded the service fee as settled on 2026-08-11 while the flag said
+otherwise, so the two disagreed for a week; both now agree.
+
+The deciding argument was the shape of the cost, not its size. A flat fee
+against Stripe's percentage means margin decays as sellers succeed — $3.62 a
+unit at an $18 price, $1.24 at $100, while that seller keeps $83.31. The
+service fee holds it flat at $4.58 at every price.
+
+Corrected while updating PROJECT.md: it claimed the fee covers Stripe *and*
+vendor tax, netting the full $5.00. Checkout passes `vendorTaxCents: 0`,
+because the vendor's tax is not known when the customer pays, so the fee covers
+Stripe only. Printful bills roughly 42c afterwards against our fee, making the
+real net about $4.58 — and a resale certificate turns that 42c into recovered
+margin rather than a smaller customer fee.
+
+**What to watch:** checkout now has a third line for a brand nobody has heard
+of. If conversion suffers, reversing it is one line.
 
 ### Fixed monthly
 

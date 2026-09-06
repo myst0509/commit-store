@@ -50,11 +50,11 @@ once: seller subdomains, the dead `store.url`, the campus firewall that blocks
 `*.vercel.app`, and the reputation clock on a new domain. Everything below is
 easier afterwards.
 
-**2. Decide the pricing model.** `PROJECT.md` records the service fee as settled
-on 2026-08-11; `PASS_CARD_FEES_TO_CUSTOMER` in `lib/pricing.ts` is `false`. The
-two disagree. It is worth $1.37 an order, and the service-fee model holds margin
-flat at $5.89 whether a seller prices at $18 or $100, where the current one
-decays to $2.55. One line to change, but it is a business decision.
+**2. ~~Decide the pricing model.~~ Settled 2026-08-19.** The customer now covers
+card processing via a service fee; `PASS_CARD_FEES_TO_CUSTOMER` is `true` and
+PROJECT.md matches. We keep about $4.58 an order at any seller price, rather
+than $3.21 falling to $1.24 as sellers price higher. Watch conversion: checkout
+gained a third line.
 
 **3. Mockups.** Products show the blank's stock photo, so two sellers using the
 same garment have identical-looking stores. This is the biggest remaining visual
