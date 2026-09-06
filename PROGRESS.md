@@ -1051,7 +1051,26 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | "What should we call you?" | **DONE** — prompt 20 |
 | Density and motion pass | **TODO** — prompt 21 |
 | Contrast, hierarchy, conversion | **TODO** — prompt 22 |
-| Light theme + conversion | **TODO** — **prompt 24**; 22 and 23 are superseded |
+| Light theme + conversion | **DONE** — prompt 24, verified live 2026-08-19 |
+
+**Verified by reading computed styles in a real browser**, not by looking at a
+screenshot. Every token landed on the specified value:
+
+| | Measured | Specified |
+|---|---|---|
+| page background | `#FFFFFF` | `#FFFFFF` |
+| primary text | `#16181D`, 17.76:1 | 17.76:1 |
+| muted text | `#4A4F57`, 8.24:1 | 8.24:1 |
+| white on accent button | `#4F5BC4`, 5.79:1 | 5.79:1 |
+
+A sweep of every text node on the public homepage found **no contrast
+failures**. The two it first flagged were a fault in the check rather than the
+CSS: the header is `oklab(… / 0.7)` — white at 70% with a 24px backdrop blur —
+and a naive parse read the first number as a red channel and computed a
+near-black background. Composite alpha before judging contrast.
+
+The marketing site went light too, though prompt 24 allowed it to stay dark.
+Consistent, and it reads well.
 
 Prompt 22 was started and interrupted, and its palette is dark. Pasting 22 then
 23 would have painted the app dark and repainted it light on top of a
