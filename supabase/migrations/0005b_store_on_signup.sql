@@ -1,5 +1,9 @@
 -- =====================================================================
--- 0005 — Give every new user a store
+-- 0005b — Give every new user a store
+--
+-- Numbered 0005b, not 0005: 0005_payment_events.sql already existed when this
+-- was written, and the collision went unnoticed for three days. Applied after
+-- payment_events and before 0006.
 --
 -- lib/launch/actions.ts create_store says "the store row itself is created
 -- before this by signup; this names it" — and only runs an UPDATE. Nothing

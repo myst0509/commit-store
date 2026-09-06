@@ -1227,7 +1227,7 @@ store, and `requireSeller` (`lib/auth/session.ts:71`) 404s without one. That
 includes `/api/launch`, whose first step is the thing that was supposed to
 create the store. Circular, and it blocked every seller who ever signed up.
 
-Fixed by `0005_store_on_signup.sql`, applied 2026-08-16.
+Fixed by `0005b_store_on_signup.sql`, applied 2026-08-16.
 
 ### The campus network, not the code — 2026-08-16
 
@@ -1314,7 +1314,7 @@ Two things the frontend has to know and cannot infer:
 - [x] **`0004_vendor_safe_idempotency_key.sql` applied** 2026-08-11 and verified:
       the column default now produces a 32-character key, and a 36-character
       value is rejected by the constraint.
-- [x] **`0005_store_on_signup.sql` applied** 2026-08-16. New signups now get a
+- [x] **`0005b_store_on_signup.sql` applied** 2026-08-16. New signups now get a
       draft store, which nothing previously created.
 - [ ] **Re-enable "Confirm email" in Supabase Auth before real sellers exist.**
       Turned off 2026-08-16 for development: Supabase's built-in auth mail is
