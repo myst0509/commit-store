@@ -16,6 +16,10 @@ export interface ResolvedStore {
   subdomain: string;
   customDomain: string | null;
   theme: StoreTheme;
+  /** Written by the guide's "Say who you are" step and by /settings. */
+  bio: string | null;
+  /** Handles, not URLs. The link is built here so a handle cannot redirect. */
+  social: Record<string, string>;
 }
 
 /** Hosts that are ours, not a seller's. */
@@ -83,12 +87,18 @@ export const resolveStore = cache(async (rawHost: string): Promise<ResolvedStore
 
   const query = sb
     .from("stores")
-    .select("id, name, subdomain, custom_domain, theme")
+    .select("id, name, subdomain, custom_domain, theme, bio, social")
     .eq("status", "active");
 
   const { data, error } = host.endsWith(`.${root}`)
     ? await query.eq("subdomain", host.slice(0, -(root.length + 1))).maybeSingle()
-    : await query.eq("custom_domain", host).maybeSingle();
+    // A bare label with no dot cannot be a real custom domain, so it is a
+    // subdomain. This is what makes /s/<subdomain> resolve directly, and it is
+    // the only way to look at a storefront until a domain is bought — sellers
+    // were finishing the whole guide with no way to see what they had made.
+    : host.includes(".")
+      ? await query.eq("custom_domain", host).maybeSingle()
+      : await query.eq("subdomain", host).maybeSingle();
 
   if (error || !data) return null;
 
@@ -98,6 +108,8 @@ export const resolveStore = cache(async (rawHost: string): Promise<ResolvedStore
     subdomain: data.subdomain,
     customDomain: data.custom_domain,
     theme: (data.theme ?? {}) as StoreTheme,
+    bio: data.bio ?? null,
+    social: (data.social ?? {}) as Record<string, string>,
   };
 });
 

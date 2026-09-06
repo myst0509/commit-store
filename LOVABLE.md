@@ -20,18 +20,25 @@ given. Everything below that is reference.
 
 # Ready to paste
 
-## 1. Prompt 24 — light theme and conversion
+## 1. Prompt 25 — let the seller see their store
+
+A seller can finish the whole guide and never see what they built, because
+every store link points at a domain nobody has bought. Storefronts now resolve
+by bare subdomain, so there is a working preview today. Full text under
+[Prompt 25](#prompt-25).
+
+## 2. Prompt 24 — light theme and conversion (applied)
 
 The current one. Replaces prompts 22 and 23, which were dark and would repaint
 each other. Full text below under [Prompt 24](#prompt-24).
 
-## 2. Prompt 21 — density and motion
+## 3. Prompt 21 — density and motion (applied)
 
 Status unconfirmed; it may have been partly applied before the theme work. If
 the interface still feels bulky after 24, run this. Full text under
 [Prompt 21](#prompt-21).
 
-## 3. Prompt 19 — Google sign-in
+## 4. Prompt 19 — Google sign-in (did not land)
 
 **Blocked** until Google is enabled in Supabase (Authentication → Providers,
 with a client ID and secret from a Google Cloud OAuth consent screen). Optional:
@@ -198,6 +205,61 @@ tradeoff understood; porting it to server-rendered is a pre-launch task.
 
 Pending ones first. Applied ones are logged at the bottom without their text —
 what they decided is in "Rules that must not be undone" above.
+
+<a id="prompt-25"></a>
+
+## Prompt 25 — let the seller see their store
+
+A seller can finish all twelve steps and has never once been able to look at
+what they built. `store.url` points at a subdomain on a domain nobody has
+bought, so every "view your store" link is dead.
+
+Storefronts now resolve by bare subdomain, so `/s/<subdomain>` on the API host
+works today with no domain at all. Both `/api/dashboard` and `/api/store` return
+it as `previewUrl`.
+
+```
+Give the seller a way to see their storefront.
+
+BOTH URLS ARE NOW RETURNED
+  store.url         where it WILL live once a domain exists. Dead today.
+  store.previewUrl  where it can be seen right now. Works.
+
+Use previewUrl for anything a seller clicks. Keep url only as text showing the
+address they will eventually have, and never link it.
+
+WHERE IT BELONGS
+
+1. On Home, once the store is live, a clear "View your store" that opens
+   previewUrl in a new tab. This is the payoff for finishing the guide, so it
+   should not be a small link in a corner.
+
+2. On the Launch step, after it succeeds: their store is live, here is where it
+   is. That moment is the one the whole guide builds to.
+
+3. In Settings beside the web address, as "Preview".
+
+4. On a published product, a way to see that product on the storefront:
+   previewUrl + "/p/" + product.slug
+
+BE HONEST ABOUT WHAT IT IS
+Do not present previewUrl as their final address, because it is not: it lives
+on our API host. Something like "Your store is live. While your address is
+being set up, view it here." One line, no apology, no banner.
+
+A DRAFT STORE HAS NO PREVIEW
+Storefronts only resolve for stores with status "active". Before the launch
+step, previewUrl returns 404, so do not show the link until store.status is
+"active".
+
+WHAT THE STOREFRONT NOW SHOWS
+The bio from "Say who you are" and the links from "Add your links" render on
+the storefront. Both were being saved and never displayed. Nothing to build
+here, but it is worth telling the seller that filling those steps in changes
+what customers see.
+```
+
+---
 
 <a id="prompt-24"></a>
 

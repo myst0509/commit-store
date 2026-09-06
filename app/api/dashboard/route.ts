@@ -73,6 +73,8 @@ export async function GET(req: Request): Promise<Response> {
         subdomain: session.subdomain,
         status: store.data?.status,
         url: `https://${session.subdomain}.ourdomain.com`,
+        // Viewable today, without a domain. See /api/store.
+        previewUrl: `${new URL(req.url).origin}/s/${session.subdomain}`,
         firstSaleAt: store.data?.first_sale_at ?? null,
       },
       earnings: {

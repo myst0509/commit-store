@@ -54,12 +54,17 @@ function splitTheme(stored: Record<string, unknown> | null) {
   return { theme, other };
 }
 
-function present(row: StoreRow) {
+function present(row: StoreRow, origin: string) {
   return {
     name: row.name,
     subdomain: row.subdomain,
     status: row.status,
+    // Where the store WILL live. Not reachable until a domain is bought.
     url: `https://${row.subdomain}.${rootDomain()}`,
+    // Where it can be seen TODAY. Storefronts resolve by bare subdomain, so
+    // this works without any domain at all — and until one exists it is the
+    // only way a seller can look at what they built.
+    previewUrl: `${origin}/s/${row.subdomain}`,
     customDomain: row.custom_domain,
     theme: splitTheme(row.theme as Record<string, unknown> | null).theme,
     bio: row.bio,
@@ -85,7 +90,7 @@ async function load(storeId: string): Promise<StoreRow> {
 export async function GET(req: Request): Promise<Response> {
   try {
     const session = await requireSeller(req);
-    return Response.json(present(await load(session.storeId)));
+    return Response.json(present(await load(session.storeId), new URL(req.url).origin));
   } catch (e) {
     return errorResponse(e);
   }
@@ -147,7 +152,7 @@ export async function PATCH(req: Request): Promise<Response> {
     const { error } = await sb.from("stores").update(patch).eq("id", session.storeId);
     if (error) throw error;
 
-    return Response.json(present(await load(session.storeId)));
+    return Response.json(present(await load(session.storeId), new URL(req.url).origin));
   } catch (e) {
     return errorResponse(e);
   }
