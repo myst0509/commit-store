@@ -1886,6 +1886,108 @@ DO NOT
 - Do not change routes, data or business logic.
 ```
 
+### 23. Light theme — replaces every palette above
+
+Decided 2026-08-19: white background, not dark. **This supersedes the palettes
+in prompts 12, 18 and 22.** Everything else in those prompts still stands —
+restraint, density, hierarchy, solid CTAs, 60-30-10, the conversion rules.
+Only the colours change.
+
+Inverting the dark palette by eye does not work. Measured against white, only
+one of its six tokens still passes:
+
+| | On white | |
+|---|---|---|
+| `accent` `#4F5BC4` | 5.79:1 | passes |
+| `faint` `#7C818A` | 3.91:1 | fails |
+| `danger` `#EB5757` | 3.48:1 | fails |
+| `accent-text` `#8B95E8` | 2.78:1 | fails |
+| `muted` `#9CA1AA` | 2.60:1 | fails |
+| `positive` `#4CB782` | 2.50:1 | fails |
+
+One thing gets simpler: **on light, a single accent does both jobs.**
+`#4F5BC4` reads at 5.79:1 as text on white *and* takes white text on it at
+5.79:1. The dark theme needed two accents; this needs one.
+
+```
+Switch the interface to a light theme. Colours only — no changes to layout,
+routes, data, logic, or any rule from the previous prompts about density,
+hierarchy, CTAs or conversion. Those all still apply.
+
+PALETTE. Every value measured against WCAG; the ratios are why they are these
+values and not rounder ones.
+
+  bg            #FFFFFF   the page
+  surface       #F7F8FA   cards, raised rows, grouped panels
+  surface-2     #EFF1F4   hover, selected
+
+  text          #16181D   primary            17.76:1
+  muted         #4A4F57   secondary           8.24:1
+  faint         #6A6E76   captions, meta      5.12:1
+
+  accent        #4F5BC4   fills AND text      5.79:1 both ways
+  positive      #357F5A   4.84:1
+  danger        #C44848   4.81:1
+
+  separator     #E6E9EE   decorative row lines only
+  control-border #929599  inputs, selects, anything with an edge that means
+                          something. 3.01:1, which is the minimum for a UI
+                          component boundary.
+
+TWO KINDS OF BORDER, AND THE DIFFERENCE MATTERS
+  separator      is decoration. A hairline between list rows. No contrast
+                 requirement, keep it faint.
+  control-border is information. It tells someone where a field begins. It
+                 must stay at #929599 or darker; lightening it to look tidier
+                 makes inputs invisible to anyone with low vision.
+
+FAINT HAS A FLOOR
+#6A6E76 is chosen so it still passes on the hover surface (4.52:1 on
+#EFF1F4), not just on white. Do not lighten it for rows that change background
+on hover.
+
+DEPTH WITHOUT SHADOWS
+On white, separate surfaces by background rather than by drop shadow:
+  page          #FFFFFF
+  a card on it  #F7F8FA with a #E6E9EE hairline
+  hovered       #EFF1F4
+Still no drop shadows. The dark theme's restraint carries over.
+
+60-30-10 ON LIGHT
+  60%  white and the near-white surfaces
+  30%  text, muted, separators
+  10%  accent, positive, danger together
+Roughly one accent-filled button per view, plus the active nav item. On a
+white background colour reads louder than it did on black, so if anything be
+stricter.
+
+CALL TO ACTION, unchanged in substance
+  primary     #4F5BC4 fill, #FFFFFF label. Solid. Never ghost or outline.
+  secondary   #F7F8FA fill, #16181D label, #929599 border
+  tertiary    text only, muted, for minor things like Cancel
+One primary per screen, and it says what happens rather than "Submit".
+
+FOCUS
+The focus ring is the accent at 2px with a 2px offset. On white it reads at
+5.79:1, comfortably above the 3:1 a focus indicator needs. Use :focus-visible
+so it appears for keyboards and not for mouse clicks.
+
+WHAT DOES NOT CHANGE
+- Seller storefronts. Those are themed by each seller through /settings and
+  are a separate surface entirely.
+- The public marketing site keeps whatever it has unless told otherwise; if it
+  is currently dark it can stay dark, and the contrast between a dark landing
+  page and a light workspace is fine.
+- Every rule from the earlier prompts on density, motion, hierarchy,
+  scanability, plain language and honest empty states.
+
+DO NOT
+- Do not invert the old dark values by eye. Use the table above.
+- Do not lighten control-border to make forms look cleaner.
+- Do not reintroduce drop shadows to create depth.
+- Do not add a light/dark toggle unless asked.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which

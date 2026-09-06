@@ -1050,7 +1050,30 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Google sign-in | **TODO** — prompt 19; Supabase provider config first |
 | "What should we call you?" | **DONE** — prompt 20 |
 | Density and motion pass | **TODO** — prompt 21 |
-| Contrast, hierarchy, conversion | **TODO** — prompt 22; palette corrected |
+| Contrast, hierarchy, conversion | **TODO** — prompt 22 |
+| Light theme | **TODO** — prompt 23; supersedes every palette above |
+
+**Switched to a light theme 2026-08-19.** Prompt 23 replaces the palettes in
+12, 18 and 22; everything else in those prompts stands.
+
+Inverting a dark palette by eye does not work. Measured against white, only one
+of the six dark tokens still passed: the accent at 5.79:1. `faint` fell to
+3.91:1, `danger` to 3.48:1, `muted` to 2.60:1 and `positive` to 2.50:1.
+
+Two things worth carrying forward:
+
+- **On light, one accent does both jobs.** `#4F5BC4` reads at 5.79:1 as text on
+  white and takes white text on it at the same ratio. The dark theme needed two
+  tokens because a fill dark enough for white text was too dark to read as
+  text; light has no such conflict.
+- **`faint` has a floor set by the hover state, not the page.** `#6A6E76` was
+  chosen so it still clears 4.5:1 on `#EFF1F4`, the hover surface, rather than
+  only on white. Checking a text colour against the page alone misses this.
+
+Separators and control borders are now separate tokens. A row divider is
+decoration with no contrast requirement; an input's edge is a UI component and
+needs 3:1, which is `#929599`. Lightening the second to look tidier makes forms
+invisible to anyone with low vision.
 
 **The palette in prompts 12 and 18 failed WCAG in three places**, found by
 measuring rather than assuming (2026-08-19):
