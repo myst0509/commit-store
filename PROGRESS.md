@@ -12,6 +12,9 @@ retries for the vendor gap and hold-releases for drops that fall short.
 
 Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` not started · `BLOCKED` waiting on something
 
+**New session? Read `HANDOFF.md` first.** It is the short version: what exists,
+what to do next, and the traps. This file is the detail behind it.
+
 ---
 
 ## Build order (from PROJECT.md)
@@ -20,13 +23,14 @@ Legend: `DONE` verified working · `PARTIAL` built, not fully proven · `TODO` n
 |---|------|--------|
 | 1 | Schema + RLS | **DONE** |
 | 2 | Fulfillment interface + Printful adapter | **PARTIAL** — no live order yet |
+| 2d | Apliiq adapter | **PARTIAL** — catalogue verified; order path unproven |
 | 2b | Catalog cached into Postgres | **DONE** |
 | 2c | Next.js scaffold | **DONE** |
-| 3 | Storefront rendering (subdomain routing, theme, PDP) | **PARTIAL** — skeleton renders, no cart |
+| 3 | Storefront rendering (subdomain routing, theme, PDP) | **PARTIAL** — renders products, bio, links; previewable at `/s/<subdomain>`; no cart |
 | 4 | Design upload + mockup compositing | **PARTIAL** — code done; blocked on garment template assets |
-| 5 | Stripe Connect + checkout + order pipeline | **PARTIAL** — checkout + webhook done; no Connect/payouts |
-| 6 | Launch path | **PARTIAL** — engine done, 8 of 21 steps defined |
-| 7 | Drops and reservations | **PARTIAL** — resolution done and verified; no seller UI |
+| 5 | Stripe Connect + checkout + order pipeline | **PARTIAL** — checkout, webhook, Connect and payouts all built; no live charge |
+| 6 | Launch path | **DONE** — 12 steps in 3 phases, completable end to end |
+| 7 | Drops and reservations | **PARTIAL** — resolution verified, seller UI built; never run on a real drop |
 
 The original "no step 5 before a real order" gate was superseded 2026-08-11 — see
 PROJECT.md. The gate is now: **no real customer payment until a garment has been

@@ -1,12 +1,16 @@
-Read PROJECT.md before any task. It defines the business model and the
-architectural constraints, which are not obvious from the code.
+Read HANDOFF.md first — it is the two-minute version of where the project
+stands, what to do next, and the traps that have already cost time.
+
+Then PROJECT.md, which defines the business model and the architectural
+constraints, neither of which is obvious from the code.
 
 Then read PROGRESS.md for current state: what is done, what is verified vs merely
 written, and which decisions are already settled. Update it when something lands.
 
 Also in the repo: DEPLOY.md (deployment sequence and what is still
 unconfigured) and LOVABLE.md (the frontend is built separately in Lovable
-against the /api routes; that file holds the handoff prompt and the API shapes).
+against the /api routes; that file holds the prompts still to paste, the API
+reference, and a list of decisions later prompts must not undo).
 
 The scripts under `scripts/` are how things get verified — `npm test`,
 `npm run verify:rls`, `npm run api:test`, `npm run checkout:test`,
