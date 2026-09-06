@@ -23,7 +23,7 @@ manufactured and no live charge has been taken. That gate is deliberate.
 | API and storefronts | `https://commit-store-xuav.vercel.app` |
 | A real storefront | `/s/demo` or `/s/xos` on the API host |
 | Database | Supabase `aktehepmvbaxuidpdzjh`, migrations `0001`–`0007` applied |
-| Tests | `npm test` — 192 unit, plus integration scripts |
+| Tests | `npm test` — 197 unit, plus integration scripts |
 
 **Two stores exist.** `XOS` is the owner's, built by walking the real guide.
 `Demo Brand` comes from `npm run seed:demo`.
@@ -33,7 +33,14 @@ manufactured and no live charge has been taken. That gate is deliberate.
 Schema and RLS · Printful catalogue (173 blanks, 12 enabled) · Apliiq catalogue
 · design validation · checkout and Stripe webhook in test mode · Connect
 onboarding · the payout run · drop resolution · the twelve-step guide · every
-seller screen · a public marketing site and store directory.
+seller screen · a public marketing site and store directory · storefronts
+rendering the seller's colours, bio and links.
+
+**Pricing is settled.** The customer covers card processing through a line
+called **Processing**, explained as "Covers the cost of taking payment
+securely. Same on every order." We keep about $4.58 an order at any seller
+price. The wording is legally constrained and lives in `lib/pricing.ts` with a
+test enforcing it — see PROJECT.md before changing a word of it.
 
 ### Built but never run against reality
 
@@ -45,29 +52,47 @@ real garment.
 
 ## What to do next
 
-**1. Buy a domain.** It is the cheapest unblock and it resolves four things at
-once: seller subdomains, the dead `store.url`, the campus firewall that blocks
-`*.vercel.app`, and the reputation clock on a new domain. Everything below is
-easier afterwards.
+Roughly in order. The first two are cheap and unblock the rest.
 
-**2. ~~Decide the pricing model.~~ Settled 2026-08-19.** The customer now covers
-card processing via a service fee; `PASS_CARD_FEES_TO_CUSTOMER` is `true` and
-PROJECT.md matches. We keep about $4.58 an order at any seller price, rather
-than $3.21 falling to $1.24 as sellers price higher. Watch conversion: checkout
-gained a third line.
+**1. Buy a domain.** Still the single highest-value hour. It resolves four
+things at once: seller subdomains, the dead `store.url`, the campus firewall
+that blocks `*.vercel.app`, and the reputation clock that makes a brand-new
+domain look suspect to enterprise filters. Then set `NEXT_PUBLIC_ROOT_DOMAIN`,
+`APP_ORIGIN` and `CORS_ALLOWED_ORIGINS` in Vercel.
 
-**3. Mockups.** Products show the blank's stock photo, so two sellers using the
-same garment have identical-looking stores. This is the biggest remaining visual
-gap. `lib/mockup/composite.ts` is written and blocked on garment template
-assets — a photo, a mask and a displacement map per blank. Apliiq's mockup
-templates would also solve it.
+**2. Paste prompt 25 into Lovable.** Written and not yet applied. A seller can
+finish the whole guide and still has no button to look at their own storefront.
+`previewUrl` works today at `/s/<subdomain>` without any domain, so this is a
+frontend-only change. It is at the top of `LOVABLE.md`.
 
-**4. Before any real money:** create the Stripe webhook endpoint
-(`STRIPE_WEBHOOK_SECRET` is still a placeholder, so webhooks are rejected in
-production), move off Vercel Hobby, which forbids commercial use, and re-enable
-"Confirm email" in Supabase.
+**3. Mockups — the biggest remaining product gap.** Every product shows the
+blank's stock photo, so two sellers using the same garment have identical
+storefronts. `lib/mockup/composite.ts` is written and tested; it is blocked on
+assets, being a photograph, a mask and a displacement map per blank. Apliiq's
+mockup templates would also solve it, and would need their template payload
+first. This is the difference between a storefront that looks like a brand and
+one that looks like a catalogue.
 
----
+**4. Then, and only then, real money.** In this order:
+   - Create the Stripe webhook endpoint and set `STRIPE_WEBHOOK_SECRET`. It is
+     a placeholder today, so every webhook is rejected in production.
+   - Move off Vercel Hobby, which forbids commercial use.
+   - Re-enable "Confirm email" in Supabase Auth.
+   - Place **one real Printful order** with `FULFILLMENT_LIVE=true`. That is the
+     gate PROJECT.md sets on live checkout, and nothing about taking real
+     customer payments should happen before a garment has actually been made.
+
+**Smaller things worth doing whenever:**
+
+- The catalogue cache goes stale. Printful added six blanks and raised base
+  costs between two syncs a week apart. `npm run sync:catalog` takes nine
+  minutes.
+- Two tank tops are typed `T-SHIRT` by Printful. Fine for grouping, wrong as a
+  description if you ever surface `garmentType`.
+- The store directory ranks by earnings but hides amounts, and stays empty
+  below five qualifying stores. Sellers have not agreed to being ranked; if
+  that becomes a concern the fix is an opt-out column, not a change to the
+  ranking.
 
 ## Waiting on someone else
 
@@ -77,7 +102,10 @@ production), move off Vercel Hobby, which forbids commercial use, and re-enable
 - **Printful:** whether their terms permit acting as merchant of record for
   third-party sellers. Never asked, and load-bearing for the whole model.
 - **An accountant:** whether Printful shipping on our behalf creates nexus in
-  their fulfilment states. Same conversation as merchant of record.
+  their fulfilment states, and a look at the Processing fee. Same conversation
+  as merchant of record. Sales tax itself is not the cost it looked like:
+  Stripe Tax has no monthly minimum and per-state thresholds are $100k or 200
+  transactions, which is far above current volume. See PROGRESS.md.
 
 ---
 
@@ -94,6 +122,9 @@ production), move off Vercel Hobby, which forbids commercial use, and re-enable
   catalogue.
 - **Test data is real data.** `verify:rls`, `drop:test` and `payout:test` create
   and remove rows in the live database.
+- **A constant baked into a script stops it modelling.** `pricing-model.ts`
+  pinned the seller's cost at the blank plus the old fee, so lowering the fee
+  changed nothing in its output and it reported dead economics for a day.
 - **Never grant SELECT on `catalog_variants` or `product_variants`** to anon or
   authenticated. Those column grants hide vendor cost and the base/fee split. A
   permissions error there is the system working.
