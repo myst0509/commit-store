@@ -1718,6 +1718,174 @@ DO NOT
 - Do not change any API call, data shape or business logic.
 ```
 
+### 22. Contrast, hierarchy and conversion
+
+Direction 2026-08-19: fix layer, colour and typography; high-contrast solid
+CTAs, no ghost buttons; an accessible palette on 60-30-10; and optimise for
+conversion — clarity, scanability, and making it easy to say yes — rather than
+for prettiness.
+
+**Three values in the palette from prompt 12 and 18 actually fail WCAG.**
+Measured, not assumed:
+
+| | Ratio | Needs | |
+|---|---|---|---|
+| `faint` `#62666D` on background | 3.45:1 | 4.5:1 | **fails** |
+| `accent` `#5E6AD2` as link text | 4.24:1 | 4.5:1 | **fails** |
+| `#F7F8F8` label on an accent button | 4.42:1 | 4.5:1 | **fails** |
+
+The cause of the last two is that **one accent cannot do both jobs**. A fill
+dark enough for white text to sit on is too dark to read as text against a
+near-black background. So the palette below splits it in two, which is what
+mature systems do.
+
+**This adjusts prompt 12's restraint rather than replacing it.** Linear-style
+quiet is right for surfaces where someone works — lists, settings, tables.
+Directive, high-contrast design is right where someone decides. Those are
+different rooms, and the guide's next action, the public site and any primary
+button live in the second.
+
+```
+Fix contrast, hierarchy and the way actions read. Appearance and copy
+emphasis only: no changes to routes, data or logic.
+
+===========================================================
+PALETTE — every value below is measured against WCAG
+===========================================================
+
+  bg              #08090A   page
+  surface         #0F1011   cards, rows, raised panels
+  surface-2       #16181A   hover, selected
+  border          rgba(255,255,255,0.08)
+
+  text            #F7F8F8   primary            18.73:1
+  muted           #9CA1AA   secondary           7.68:1
+  faint           #7C818A   captions, meta      5.09:1
+
+  accent-fill     #4F5BC4   button backgrounds  white on it: 5.79:1
+  accent-text     #8B95E8   links, active nav   7.18:1 on bg
+
+  positive        #4CB782   7.97:1
+  danger          #EB5757   5.73:1
+
+TWO ACCENTS, USED FOR DIFFERENT THINGS
+  accent-fill  is a background. Put #FFFFFF on it, never #F7F8F8, which drops
+               below 4.5:1.
+  accent-text  is a foreground. Links, the active nav item, a highlighted
+               number. Never use accent-fill as text on the page background.
+
+Do not use the old #5E6AD2 for either. It sits between the two roles and fails
+at both.
+
+60-30-10, on a dark interface
+  60%  bg and surface. Most of the screen is near-black and does nothing.
+  30%  text, muted and borders. The content itself.
+  10%  accent, positive and danger, together. If more than roughly a tenth of
+       a screen carries colour, remove some.
+On a dashboard that usually means ONE accent-filled button per view, plus the
+active nav item. Everything else earns attention through size and position.
+
+===========================================================
+CALL TO ACTION
+===========================================================
+
+The primary action on any screen is a SOLID accent-fill button with white
+text. Never a ghost button, never an outline, never a text link.
+
+  primary     accent-fill background, #FFFFFF label
+  secondary   surface-2 background, text label, hairline border
+  tertiary    text-only, muted, for genuinely minor things like Cancel
+
+ONE primary per screen. If two things look equally primary, neither is.
+
+Buttons say what happens, in the seller's words. Not "Submit", not "Continue"
+where something more specific is true:
+
+  "Name your brand"          not  "Submit"
+  "Upload your design"       not  "Continue"
+  "Put my store live"        not  "Launch"
+  "Set my price"             not  "Save"
+
+Destructive actions use danger, and never sit next to the primary action.
+
+===========================================================
+HIERARCHY AND SCANABILITY
+===========================================================
+
+Someone should understand a screen without reading it. Three levels, no more:
+
+  1. What is this screen, and what is the one thing to do
+  2. The content
+  3. Supporting detail, in muted or faint
+
+Rules that get you there:
+  - One h1 per screen. Everything else is smaller.
+  - The primary action sits above the fold and is visually heaviest.
+  - Numbers a seller cares about — what they earn, what is ready, how many
+    reserved — get size. Labels stay small and muted.
+  - Left-align text. Centred paragraphs are slower to scan.
+  - Line length caps at about 70 characters.
+  - Group related things with space, not with borders.
+
+===========================================================
+CONVERSION, WHICH HERE MEANS FINISHING THE GUIDE
+===========================================================
+
+The thing being "converted" is a first-time brand owner getting from signup to
+a live store. Every step is a chance to stop. So:
+
+  SAY WHAT HAPPENS, NOT WHAT IT IS CALLED
+  Each step already carries an `outcome` from the API — "Creates your
+  storefront", "Shows what you earn per sale". Show it. It answers "why am I
+  doing this" before they ask.
+
+  SHOW PROGRESS HONESTLY
+  "4 of 12" and a thin bar. Progress that is visibly moving is the single
+  strongest reason to continue.
+
+  REDUCE VISIBLE EFFORT
+  Never show twelve steps as twelve identical demands. The phases already
+  group them; show the current phase expanded and the others collapsed to a
+  title and a count.
+
+  ONE DECISION AT A TIME
+  A step's form shows only the fields that step needs. Nothing else on screen
+  competes.
+
+  REMOVE DEAD ENDS
+  Every empty state has an action. Every error says what to do next. Every
+  locked step says what unlocks it.
+
+  NEVER FAKE URGENCY
+  No countdowns, no "3 people are viewing", no invented scarcity. The audience
+  is someone risking their own money on a first business; a manipulative
+  pattern costs their trust permanently and it is not worth the click.
+
+===========================================================
+THE AUDIENCE
+===========================================================
+
+Someone starting their first clothing brand. Not technical, no audience, no
+money to lose, and quite likely unsure they are allowed to be doing this.
+
+  - Plain words. "Earnings", not "ledger". "Clears in 14 days", not "net 14".
+  - Never assume they know what a blank, a DTG print or a drop is. Say it in
+    the sentence.
+  - Money is explained wherever it appears: what they pay, what they keep.
+  - Confidence without hype. No exclamation marks, no "🎉", no "You're
+    crushing it".
+
+===========================================================
+DO NOT
+===========================================================
+- Do not use a ghost or outline button for a primary action.
+- Do not use accent-fill as text, or #F7F8F8 as a label on accent-fill.
+- Do not add colour beyond the 10%.
+- Do not centre body text.
+- Do not invent urgency, scarcity or social proof.
+- Do not change routes, data or business logic.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which

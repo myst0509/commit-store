@@ -1050,6 +1050,25 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Google sign-in | **TODO** — prompt 19; Supabase provider config first |
 | "What should we call you?" | **DONE** — prompt 20 |
 | Density and motion pass | **TODO** — prompt 21 |
+| Contrast, hierarchy, conversion | **TODO** — prompt 22; palette corrected |
+
+**The palette in prompts 12 and 18 failed WCAG in three places**, found by
+measuring rather than assuming (2026-08-19):
+
+| | Ratio | Needs |
+|---|---|---|
+| `faint` `#62666D` on background | 3.45:1 | 4.5:1 |
+| `accent` `#5E6AD2` as link text | 4.24:1 | 4.5:1 |
+| `#F7F8F8` label on an accent button | 4.42:1 | 4.5:1 |
+
+The last two share a cause: **one accent cannot do both jobs.** A fill dark
+enough for white text to sit on is too dark to read as text against near-black.
+Prompt 22 splits it into `accent-fill` `#4F5BC4` (white on it, 5.79:1) and
+`accent-text` `#8B95E8` (7.18:1 on the background), and lifts `faint` to
+`#7C818A` (5.09:1). Every token now passes with margin.
+
+Worth keeping: a single accent token is the default instinct and it is wrong on
+a dark interface. Check both directions whenever the accent moves.
 
 **Motion techniques were checked against current browser support** rather than
 recalled, via the modern-web-guidance skill. Two things that matter if this is
