@@ -34,24 +34,44 @@ happens to cost on any given order.
 - **Vendor sales tax**, unless we hold a resale certificate with the vendor — worth doing early,
   it is pure recovered margin.
 
-**Service fee (settled 2026-08-11).** Rather than absorb those costs, the customer covers them via
-a **service fee** line at checkout, so our platform fee is what we actually keep. On the reference
-order that fee is $1.84 — $1.42 Stripe plus $0.42 vendor tax — and a $5.00 platform fee nets the
-full $5.00.
+**Service fee — settled 2026-08-11, and actually switched on 2026-08-19.** The customer covers
+card processing through a **service fee** line at checkout, so our platform fee is close to what
+we keep. `PASS_CARD_FEES_TO_CUSTOMER` is `true`.
 
-Two things about that number:
+It was `false` until 19 August, so this document and the code disagreed for a week. The deciding
+argument was not the per-order difference but its shape. Our fee is flat and Stripe's is a
+percentage of the whole charge, so absorbing it makes our margin decay as sellers succeed:
+
+| Seller prices at | Absorbing | Service fee |
+|---|---|---|
+| $18 | $3.62 | $4.58 |
+| $32 | $3.21 | $4.58 |
+| $60 | $2.40 | $4.59 |
+| $100 | **$1.24** | $4.58 |
+
+A seller moving $100 hoodies keeps $83.31 and leaves us $1.24. Earning least from the sellers
+doing best is the wrong shape for a business whose entire revenue is per order.
+
+Three things about the number:
 
 - Stripe charges its percentage on the service fee itself, so covering a $1.37 cost requires
   charging $1.42. `grossUpForStripe` solves for it; do not just add the fee.
-- A resale certificate with Printful removes the $0.42, which lowers the customer's fee rather
-  than raising our margin.
+- **It covers Stripe only, not vendor tax.** Checkout passes `vendorTaxCents: 0` because the
+  vendor's sales tax is not known when the customer pays. Printful bills it afterwards, roughly
+  42c an order, against our fee. So a $5.00 platform fee nets about $4.58.
+- A resale certificate with Printful removes that 42c, and because it is not in the customer's
+  fee it becomes recovered margin rather than a smaller fee.
+
+The cost of this choice is a third line at checkout for a brand nobody has heard of, which is a
+real thing to lose. If it hurts conversion, reversing it is one line.
 
 It must be a **uniform service fee on every order regardless of payment method**, not a card
 surcharge: several US states restrict surcharging and the card networks prohibit it on debit.
 Worth legal review before launch — we are merchant of record, so it is our exposure.
 
-All of this lives in `lib/pricing.ts`, the only place the arithmetic exists. `PASS_CARD_FEES_TO_CUSTOMER`
-flips the whole model in one line if the fee hurts conversion.
+All of this lives in `lib/pricing.ts`, the only place the arithmetic exists.
+`PASS_CARD_FEES_TO_CUSTOMER` flips the whole model in one line, and
+`npm run pricing:model` prints both side by side at the current fee.
 
 Implications you must respect:
 - Sellers never hold vendor API credentials. We do.

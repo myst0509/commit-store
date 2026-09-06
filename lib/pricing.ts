@@ -21,20 +21,35 @@ const STRIPE_PERCENT_BPS = 290; // basis points of a basis point: 2.90%
 const STRIPE_FIXED_CENTS = 30;
 
 /**
- * Platform-wide, settled 2026-08-11: we absorb card processing rather than
- * adding a service fee line at checkout. Checkout stays a clean two lines —
- * goods and shipping — which for a brand nobody has heard of is worth more than
- * the ~95c per order the fee would recover.
+ * Whether the customer covers card processing via a service fee line.
  *
- * The cost of this choice: our margin declines as sellers price higher, because
- * Stripe's percentage grows with the order while our fee is flat. Across the
- * realistic $25-40 band that is about 60c. It matters if sellers start moving
- * $80 hoodies, at which point volume pricing with Stripe is the answer.
+ * Set true 2026-08-19, resolving a disagreement in which PROJECT.md recorded
+ * the service fee as settled while this flag said the opposite.
  *
- * Flip to true to pass it on — every consumer of computeEconomics reads this,
- * so the change is one line. `npm run pricing:model` shows both.
+ * The reason is the SHAPE of the cost rather than its size. Our fee is flat;
+ * Stripe's is a percentage of the whole charge, shipping included. So absorbing
+ * it means our margin decays as sellers succeed:
+ *
+ *   seller prices at   absorbing   service fee
+ *          $18             $3.62         $4.58
+ *          $32             $3.21         $4.58
+ *          $60             $2.40         $4.59
+ *         $100             $1.24         $4.58
+ *
+ * A seller shifting $100 hoodies keeps $83.31 and leaves us $1.24. Earning
+ * least from the sellers doing best is the wrong shape for a platform whose
+ * entire revenue is per order.
+ *
+ * What it costs: a third line at checkout, for a brand nobody has heard of.
+ * That is a real thing to lose, and if it hurts conversion this is one line to
+ * reverse — every consumer of computeEconomics reads this flag.
+ *
+ * NOTE: checkout passes vendorTaxCents: 0, because the vendor's sales tax is
+ * not known when the customer pays. So this covers STRIPE ONLY. Printful bills
+ * the tax afterwards, roughly 42c an order, against our fee; a resale
+ * certificate removes it. `npm run pricing:model` shows both models.
  */
-export const PASS_CARD_FEES_TO_CUSTOMER = false;
+export const PASS_CARD_FEES_TO_CUSTOMER = true;
 
 /**
  * Our flat per-unit fee. PROJECT.md: a flat amount (~$4–6), never a percentage.
