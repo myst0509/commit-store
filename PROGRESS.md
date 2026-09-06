@@ -1051,7 +1051,13 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | "What should we call you?" | **DONE** — prompt 20 |
 | Density and motion pass | **TODO** — prompt 21 |
 | Contrast, hierarchy, conversion | **TODO** — prompt 22 |
-| Light theme | **TODO** — prompt 23; supersedes every palette above |
+| Light theme + conversion | **TODO** — **prompt 24**; 22 and 23 are superseded |
+
+Prompt 22 was started and interrupted, and its palette is dark. Pasting 22 then
+23 would have painted the app dark and repainted it light on top of a
+half-applied state, so 24 merges 22's rules with 23's light palette as a single
+paste. 22 and 23 are marked do-not-paste in LOVABLE.md; 23 is kept for the
+contrast working behind the values.
 
 **Switched to a light theme 2026-08-19.** Prompt 23 replaces the palettes in
 12, 18 and 22; everything else in those prompts stands.

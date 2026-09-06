@@ -1718,7 +1718,10 @@ DO NOT
 - Do not change any API call, data shape or business logic.
 ```
 
-### 22. Contrast, hierarchy and conversion
+### 22. Contrast, hierarchy and conversion — SUPERSEDED BY 24
+
+**Do not paste this.** Its palette is dark. Prompt 24 carries all of its rules
+with the light palette instead.
 
 Direction 2026-08-19: fix layer, colour and typography; high-contrast solid
 CTAs, no ghost buttons; an accessible palette on 60-30-10; and optimise for
@@ -1886,7 +1889,10 @@ DO NOT
 - Do not change routes, data or business logic.
 ```
 
-### 23. Light theme — replaces every palette above
+### 23. Light theme — SUPERSEDED BY 24
+
+**Do not paste this.** Prompt 24 is this palette plus prompt 22's rules, as one
+paste. Kept here for the contrast measurements behind the values.
 
 Decided 2026-08-19: white background, not dark. **This supersedes the palettes
 in prompts 12, 18 and 22.** Everything else in those prompts still stands —
@@ -1987,6 +1993,170 @@ DO NOT
 - Do not reintroduce drop shadows to create depth.
 - Do not add a light/dark toggle unless asked.
 ```
+
+### 24. Light theme + conversion — USE THIS INSTEAD OF 22 AND 23
+
+Prompt 22 was started and interrupted, and its palette is dark, which 23 then
+replaces. Running them in sequence would paint the app dark and then repaint it
+light, on top of a half-applied state.
+
+**This is 22's substance with 23's colours, as one paste. Do not run 22 or 23.**
+
+```
+Apply a light theme and tighten the interface for clarity and conversion.
+
+Colours, hierarchy and copy emphasis only. No changes to routes, data
+fetching, business logic, or the guide's steps and their wording. Every rule
+from the earlier prompts about density, spacing, motion and plain language
+still applies.
+
+===========================================================
+PALETTE — light. Every value is measured against WCAG.
+===========================================================
+
+  bg              #FFFFFF   the page
+  surface         #F7F8FA   cards, raised rows, grouped panels
+  surface-2       #EFF1F4   hover, selected
+
+  text            #16181D   primary            17.76:1
+  muted           #4A4F57   secondary           8.24:1
+  faint           #6A6E76   captions, meta      5.12:1
+
+  accent          #4F5BC4   fills AND text      5.79:1 both ways
+  positive        #357F5A   4.84:1
+  danger          #C44848   4.81:1
+
+  separator       #E6E9EE   decorative row lines only
+  control-border  #929599   inputs, selects, any edge that means something
+
+If the app is currently dark, replace every dark value. Do not keep a mix.
+
+ONE ACCENT, BOTH JOBS
+On white, #4F5BC4 works as a fill with white text on it AND as text on the
+page. There is no second accent token. Do not introduce one.
+
+TWO KINDS OF BORDER, AND THE DIFFERENCE MATTERS
+  separator       is decoration. A hairline between rows. Keep it faint.
+  control-border  is information. It shows where a field begins, and 3:1 is
+                  the minimum for a UI component boundary. Lightening it to
+                  look tidier makes inputs invisible to anyone with low
+                  vision.
+
+FAINT HAS A FLOOR
+#6A6E76 is set so it still passes on the hover surface (4.52:1 on #EFF1F4),
+not just on white. Do not lighten it for rows that change on hover.
+
+DEPTH WITHOUT SHADOWS
+  page          #FFFFFF
+  card on it    #F7F8FA with an #E6E9EE hairline
+  hovered       #EFF1F4
+No drop shadows.
+
+60-30-10
+  60%  white and the near-white surfaces
+  30%  text, muted, separators
+  10%  accent, positive and danger together
+In practice: one accent-filled button per view, plus the active nav item. On
+white, colour reads louder than it did on black, so if anything be stricter.
+
+===========================================================
+CALL TO ACTION
+===========================================================
+
+  primary     #4F5BC4 fill, #FFFFFF label. SOLID. Never ghost, never outline,
+              never a text link.
+  secondary   #F7F8FA fill, #16181D label, #929599 border
+  tertiary    text only, muted, for minor things like Cancel
+
+ONE primary per screen. If two things look equally primary, neither is.
+
+Buttons say what happens, in the seller's words:
+  "Name your brand"        not  "Submit"
+  "Upload your design"     not  "Continue"
+  "Put my store live"      not  "Launch"
+
+Destructive actions use danger and never sit beside the primary action.
+
+FOCUS
+2px accent ring with a 2px offset, via :focus-visible so it shows for
+keyboards and not mouse clicks. 5.79:1 on white, above the 3:1 required.
+
+===========================================================
+HIERARCHY AND SCANABILITY
+===========================================================
+
+Someone should understand a screen without reading it. Three levels, no more:
+  1. What this screen is, and the one thing to do
+  2. The content
+  3. Supporting detail, in muted or faint
+
+  - One h1 per screen. Everything else is smaller.
+  - The primary action is above the fold and visually heaviest.
+  - Numbers a seller cares about — what they earn, what is ready, how many
+    reserved — get size. Their labels stay small and muted.
+  - Left-align text. Centred paragraphs are slower to scan.
+  - Line length caps around 70 characters.
+  - Group with space, not with borders.
+
+===========================================================
+CONVERSION, WHICH HERE MEANS FINISHING THE GUIDE
+===========================================================
+
+What is being converted is a first-time brand owner getting from signup to a
+live store. Every step is a chance to stop.
+
+  SAY WHAT HAPPENS, NOT WHAT IT IS CALLED
+  Each step carries an `outcome` from the API — "Creates your storefront",
+  "Shows what you earn per sale". Show it. It answers "why am I doing this".
+
+  SHOW PROGRESS HONESTLY
+  "4 of 12" and a thin bar. Visible movement is the strongest reason to keep
+  going.
+
+  REDUCE VISIBLE EFFORT
+  Never render twelve steps as twelve identical demands. Expand the current
+  phase; collapse the others to a title and a count.
+
+  ONE DECISION AT A TIME
+  A step's form shows only that step's fields. Nothing else competes.
+
+  REMOVE DEAD ENDS
+  Every empty state has an action. Every error says what to do next. Every
+  locked step says what unlocks it.
+
+  NEVER FAKE URGENCY
+  No countdowns, no "3 people are viewing", no invented scarcity or social
+  proof. This audience is risking their own money on a first business, and a
+  manipulative pattern costs their trust permanently.
+
+===========================================================
+THE AUDIENCE
+===========================================================
+
+Someone starting their first clothing brand. Not technical, no audience, no
+money to lose, quite likely unsure they are allowed to be doing this.
+
+  - Plain words. "Earnings", not "ledger". "Clears in 14 days", not "net 14".
+  - Never assume they know what a blank, a DTG print or a drop is.
+  - Money is explained wherever it appears: what they pay, what they keep.
+  - Confidence without hype. No exclamation marks, no emoji, no "You're
+    crushing it".
+
+===========================================================
+DO NOT
+===========================================================
+- Do not leave any dark values behind. Replace the palette wholesale.
+- Do not add a second accent token.
+- Do not lighten control-border to make forms look cleaner.
+- Do not use a ghost or outline button for a primary action.
+- Do not add drop shadows, centre body text, or invent urgency.
+- Do not restyle seller storefronts; those are themed by sellers in /settings.
+- Do not change routes, data or business logic.
+```
+
+**On the public marketing site:** it can stay dark. A dark landing page leading
+into a light workspace is a deliberate pattern and the homepage already reads
+well. Say so explicitly if you want it light too.
 
 ### The public directory endpoint
 
