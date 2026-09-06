@@ -1010,7 +1010,16 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Three-phase guide | **DONE** — prompt 17 |
 | Full UI refinement (corrected ChatGPT brief) | **TODO** — prompt 18, supersedes 12/15/16 |
 | Google sign-in | **TODO** — prompt 19; Supabase provider config first |
-| "What should we call you?" | **TODO** — prompt 20; `/api/me` built |
+| "What should we call you?" | **DONE** — prompt 20 |
+| Density and motion pass | **TODO** — prompt 21 |
+
+**Motion techniques were checked against current browser support** rather than
+recalled, via the modern-web-guidance skill. Two things that matter if this is
+revisited: `@starting-style` with `transition-behavior: allow-discrete` has been
+Baseline since 2024-08-06, so entry animations need no library at all; and
+`sibling-index()` only reached Baseline on 2026-08-18, so the stagger sets a
+`--i` custom property from React instead, which works everywhere. No animation
+dependency was introduced.
 | Visual direction | **TODO** — prompt 11 applied but rejected; prompt 12 replaces it |
 
 **Visual direction settled 2026-08-19 as linear.app**, after prompt 11's

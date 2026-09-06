@@ -1554,6 +1554,170 @@ DO NOT
   PATCH /api/me, which is where the validation lives.
 ```
 
+### 21. Density and motion — the pass that removes the "AI-made" feel
+
+Feedback after 18 and 20 landed: still bulky, still reads as generated. Two
+causes, and only the second is about animation.
+
+**Bulky is a spacing and type problem, not a motion problem.** Fading in an
+oversized layout gives you an oversized layout that fades. So this prompt fixes
+proportions first and adds motion second.
+
+Techniques are checked against current browser support: `@starting-style` has
+been Baseline since August 2024, so entry animations need no library.
+`sibling-index()` only reached Baseline in August 2026, so the stagger uses a
+React-set custom property instead, which works everywhere.
+
+```
+Two changes: tighten the proportions, then add motion. No new dependencies —
+no framer-motion, no animation library. Modern CSS does all of this.
+
+===========================================================
+PART 1 — DENSITY. This is what makes it feel generated.
+===========================================================
+
+The interface is too big everywhere. Uniform generous padding, oversized type
+and a card around everything is exactly the look of a generated UI. Real
+numbers to hit:
+
+  TYPE
+    page title        24px, weight 600, tracking -0.02em
+    section heading   15px, weight 600
+    body / rows       13.5-14px, weight 400
+    secondary         13px, muted
+    caption / meta    12px, faint
+  Nothing on a dashboard should be 32px or larger except a single hero number.
+
+  SPACING
+    page padding          24px, 32px on wide screens
+    space between sections 32px
+    space inside a group   12px
+    list row vertical      10-12px, giving a 36-40px row
+  A list row is one line of text with a second muted line at most. It is not a
+  144px tall card.
+
+  SHAPE
+    radius        6px, 8px on the largest surfaces only. No pill shapes.
+    borders       1px hairline at low alpha. Never a solid grey line.
+    shadows       none. Depth comes from background, not drop shadows.
+
+  WIDTH
+    Tables and lists run to about 1100px. Do not centre everything in a narrow
+    640px column with big margins — that is what makes a dashboard feel like a
+    landing page.
+
+  DELETE CARDS
+    If a card contains one number, or one row, or a single form field, remove
+    the card and keep the content. A border is only justified when it groups
+    several things that belong together.
+
+===========================================================
+PART 2 — MOTION
+===========================================================
+
+Rules for every animation in the app:
+  duration   120-200ms. Nothing longer. Hovers 80-120ms.
+  easing     ease-out for entry, ease-in for exit. Never a spring, never a
+             bounce, never overshoot.
+  properties opacity and a 4-6px translate. Never scale on lists or rows.
+  budget     one thing moves at a time. If two animations overlap, cut one.
+
+MANDATORY: every animation must be disabled or reduced under
+@media (prefers-reduced-motion: reduce). Keep a short fade, drop all movement.
+
+  1. ENTRY, when content first renders
+     Use @starting-style with a normal CSS transition. It is Baseline and needs
+     no JavaScript:
+
+       .row {
+         opacity: 1;
+         translate: 0;
+         transition: opacity 160ms ease-out, translate 160ms ease-out;
+       }
+       @starting-style {
+         .row { opacity: 0; translate: 0 4px; }
+       }
+
+     If an element is toggled via display or the hidden attribute, add
+     `transition-behavior: allow-discrete` as its OWN declaration, not inside
+     the transition shorthand, and include display in the transition list.
+
+  2. STAGGER, for lists and the guide's steps
+     Set the index as a custom property when rendering, then use it as a delay:
+
+       {items.map((item, i) => (
+         <Row key={item.id} style={{ "--i": i }} />
+       ))}
+
+       .row { transition-delay: calc(var(--i, 0) * 30ms); }
+
+     30ms per item, and cap the total: after the 8th item use the same delay
+     for everything, or a long list turns into a slow wave.
+
+     Do not use sibling-index() — it only became widely available in August
+     2026 and the React approach above works everywhere.
+
+  3. STATE CHANGES worth animating
+     A step turning complete, a locked step unlocking when its prerequisite
+     finishes, a progress bar advancing, a row appearing after creation. These
+     are the moments that make the product feel alive. Everything else can be
+     instant.
+
+  4. NOTHING THAT LOOPS
+     No pulsing dots, no shimmer that never stops, no floating gradients.
+
+===========================================================
+PART 3 — INTERACTIVITY
+===========================================================
+
+Sleek is mostly about response time, not animation.
+
+  HOVER
+    Rows lift their background a few percent and reveal their trailing action
+    or chevron. 80ms. The cursor changes on anything clickable.
+
+  FOCUS
+    A visible focus ring on every interactive element, using :focus-visible so
+    it appears for keyboards and not for mouse clicks. Accent colour, 2px,
+    with a small offset. Never remove outlines without replacing them.
+
+  KEYBOARD
+    Cmd+K / Ctrl+K   command menu (already specified)
+    /                focus the search field
+    Up / Down        move through a list
+    Enter            open the focused item
+    Escape           close a modal, panel or menu
+    Tab order must follow what you see on screen.
+
+  OPTIMISTIC UPDATES
+    This does more for perceived speed than any animation. When a seller
+    completes a step, renames a product or saves a colour, update the screen
+    immediately and reconcile when the response lands. On failure, roll back
+    and show the server's message.
+
+    Never show a spinner on a button for an action that usually succeeds in
+    under a second.
+
+  SKELETONS THAT MATCH
+    A loading skeleton must be the same shape and height as the content that
+    replaces it. If the layout jumps when data arrives, the skeleton is wrong.
+
+  EMPTY IS NOT LOADING
+    An empty list renders its empty state instantly. Do not show a skeleton
+    for something already known to be empty.
+
+===========================================================
+DO NOT
+===========================================================
+- Do not add framer-motion, GSAP, or any animation dependency.
+- Do not animate layout properties like width, height, top or left. Use
+  opacity and translate.
+- Do not stagger anything longer than about 8 items.
+- Do not add page-level transitions between routes. They delay every
+  navigation and Linear does not use them.
+- Do not change any API call, data shape or business logic.
+```
+
 ### The public directory endpoint
 
 `GET /api/stores` is public, no auth. It serves the marketing home, which
