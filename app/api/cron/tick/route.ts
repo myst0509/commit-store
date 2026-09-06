@@ -1,6 +1,6 @@
 import { resolveDueDrops } from "@/lib/drops/resolve";
 import { findStuckOrders, retryDueFulfillments } from "@/lib/orders/retry";
-import { runPayouts } from "@/lib/payouts/run";
+import { isPayoutWindow, PAYOUT_DAY_UTC, PAYOUT_HOUR_UTC, runPayouts } from "@/lib/payouts/run";
 
 /**
  * One scheduled endpoint that runs all the background work.
@@ -17,14 +17,6 @@ import { runPayouts } from "@/lib/payouts/run";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
-
-/**
- * Payouts only run in this UTC hour, so sellers get one statement a day rather
- * than a trickle. Multiple ticks within the hour are harmless: the payout run
- * claims ledger entries before transferring, so a second pass finds nothing to
- * pay.
- */
-const PAYOUT_HOUR_UTC = 9;
 
 export async function GET(req: Request): Promise<Response> {
   const expected = process.env.CRON_SECRET;
@@ -78,8 +70,9 @@ export async function GET(req: Request): Promise<Response> {
     }
   }
 
-  const payoutHour = new Date().getUTCHours() === PAYOUT_HOUR_UTC;
-  if (wants("payouts") && (payoutHour || only?.includes("payouts"))) {
+  // Weekly, not daily: Stripe charges per payout sent, so a daily cadence is a
+  // real cost that falls hardest on small sellers. See lib/payouts/run.ts.
+  if (wants("payouts") && (isPayoutWindow(new Date()) || only?.includes("payouts"))) {
     try {
       const run = await runPayouts();
       report.payouts = {
@@ -92,7 +85,10 @@ export async function GET(req: Request): Promise<Response> {
       failures.push(`payouts: ${message(e)}`);
     }
   } else if (wants("payouts")) {
-    report.payouts = { skipped: `runs at ${PAYOUT_HOUR_UTC}:00 UTC` };
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    report.payouts = {
+      skipped: `runs weekly, ${days[PAYOUT_DAY_UTC]} at ${PAYOUT_HOUR_UTC}:00 UTC`,
+    };
   }
 
   report.ms = Date.now() - started;

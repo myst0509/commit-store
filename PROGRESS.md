@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-19 · 161 unit tests + 50 integration checks
+**Last updated:** 2026-08-19 · 184 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -561,6 +561,14 @@ money sent and unrecorded, which pays twice on the next run and cannot be undone
 Claiming filters on `payout_id is null`, so a concurrent run cannot pay for
 entries it does not own.
 
+**Payouts run WEEKLY, Friday 09:00 UTC** (changed 2026-08-19; was daily).
+Stripe charges 25c per payout SENT on top of $2 per monthly active account, so
+a daily cadence costs up to $7.50 a seller a month. That falls hardest on the
+smallest sellers, who are the ones this platform is for: two shirts a month
+earns us $9.04, and daily payouts could take a quarter of it. Weekly brings the
+same seller to about $1.16. `isPayoutWindow` is pure and tested so the schedule
+cannot drift back without deleting a test that explains why.
+
 **A failed transfer releases the claim.** Verified. Without it a transient Stripe
 error would strand a seller's earnings permanently with nothing marked wrong.
 
@@ -775,6 +783,88 @@ Encrypt rate limits. Railway, Render or Fly running `next start` are otherwise
 genuine alternatives — nothing in the code is Vercel-specific except the crons
 in `vercel.json`, and Sharp needs a real Node runtime, which rules out
 Workers-style platforms.
+
+## What it costs to run — modelled 2026-08-19
+
+From `npm run pricing:model` and Stripe's published Connect pricing. Anything
+guessed is in its own section at the end and marked as such.
+
+### Per order
+
+Reference: Bella + Canvas 3001, seller cost $18.00, retail $32.00.
+
+| | Now | With resale certificate |
+|---|---|---|
+| Customer pays | $36.75 | $36.75 |
+| Seller earns | $14.00 | $14.00 |
+| Gross markup | $5.89 | $6.31 |
+| Stripe | −$1.37 | −$1.37 |
+| Vendor sales tax | −$0.42 | $0.00 |
+| **We keep** | **$4.52** | **$4.94** |
+
+**PROJECT.md and `lib/pricing.ts` disagree here, and it is worth $1.37 an
+order.** PROJECT.md records the service fee as settled on 2026-08-11, with the
+customer covering Stripe. `PASS_CARD_FEES_TO_CUSTOMER` is `false`, with a
+comment arguing a clean two-line checkout is worth more than ~95c for a brand
+nobody has heard of. The service-fee model also holds margin FLAT at $5.89
+whether a seller prices at $18 or $100, where the current one decays to $2.55.
+Unresolved, and the largest single lever in the model.
+
+### Fixed monthly
+
+| | | |
+|---|---|---|
+| Vercel Pro | **$20** | required; Hobby forbids commercial use |
+| Supabase | $0 → **$25** | free tier holds to roughly 1GB of artwork |
+| Domain | ~$1.25 | ~$15/yr |
+| Cron (cron-job.org) | $0 | |
+| Printful, Apliiq | $0 | no platform fee |
+| Lovable | unknown | subscription, tier not recorded |
+
+**~$21/month now, ~$46 once Supabase tips over. Break-even is 5 to 10 orders a
+month.**
+
+### Per seller — Stripe Connect, quoted
+
+- **$2 per monthly active account**, where active means "any month payouts are
+  sent to its bank account or debit card"
+- **0.25% + 25c per payout sent**
+- **0.25% of payout volume** for funds routing
+- 1099 filing: $2.99 federal, $1.49 per state, per seller over the threshold
+
+Dormant sellers cost nothing, which matches PROJECT.md's "most signups never
+sell". **The 25c is per payout, not per month** — which is why payouts moved
+from daily to weekly on 2026-08-19. See `lib/payouts/run.ts`.
+
+### Scale
+
+Weekly payouts, current pricing config.
+
+| | Sellers | Selling | Orders/mo | Revenue | Costs | Net |
+|---|---|---|---|---|---|---|
+| Early | 25 | 5 | 15 | $68 | $62 | **+$6** |
+| Growing | 200 | 30 | 150 | $678 | $148 | **+$530** |
+| Working | 2,000 | 200 | 1,000 | $4,520 | $780 | **+$3,740** |
+
+Loss-making below roughly 15 orders a month, and it compounds well above that.
+Nothing here is expensive at scale: fixed costs are trivial and the rest is
+genuinely per-order.
+
+### Guessed — sized, not verified
+
+| | Estimate | Why it is a guess |
+|---|---|---|
+| **Sales tax compliance** | $50–100/mo | We are merchant of record. Avalara or TaxJar class tooling plus registration wherever we cross nexus. PROJECT.md calls MoR the largest unhedged assumption; this is what it costs. |
+| **Chargebacks** | ~$0.15/order | $15 a dispute at a 1% rate. Above 1.5% Stripe can terminate us, so the real risk is existential rather than linear. |
+| Legal review | $1–5k once | The service fee needs it; several US states restrict surcharging. |
+| Email at scale | $0–20/mo | Resend is free to 3k/month. Not built. |
+| Vercel image transforms | unknown | Storefronts are image-heavy and transforms are metered. Unknowable before real traffic. |
+| Support time | your hours | The largest real cost early, and the one nobody budgets. |
+| Fraud losses | unknown | Free storefronts plus card processing is a known vector. |
+
+**Sales tax is the one that could change the business.** At $4.52 an order a
+$75/month compliance tool needs about 17 orders a month purely to pay for
+itself, which is more than the entire hosting bill.
 
 ## Open decisions
 

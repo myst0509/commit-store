@@ -24,6 +24,36 @@ import { serviceClient } from "@/lib/supabase/client";
  */
 const MINIMUM_PAYOUT_CENTS = 1000;
 
+/**
+ * Payouts run WEEKLY, on Friday at 09:00 UTC.
+ *
+ * This was daily, which was expensive in a way that is easy to miss. Stripe
+ * Connect charges "$2 per monthly active account" plus "0.25% + 25c per payout
+ * sent" — the 25c is per payout, not per month. Paying a seller every day costs
+ * up to $7.50 a month in payout fees alone.
+ *
+ * That lands hardest on the smallest sellers, who are the ones this platform
+ * exists for. Two shirts a month earns us $9.04; daily payouts could take a
+ * quarter of it. Weekly cuts the same seller's payout fees to about $1.16 and
+ * still pays them often enough to feel prompt.
+ *
+ * Friday so the money is moving before the weekend. Changing the day is
+ * harmless; changing the frequency is a cost decision.
+ */
+export const PAYOUT_DAY_UTC = 5;
+export const PAYOUT_HOUR_UTC = 9;
+
+/**
+ * Pure so the schedule can be tested without waiting a week.
+ *
+ * The scheduler calls the tick every ten minutes, so this is true several times
+ * within the payout hour. That is safe: runPayouts claims ledger entries before
+ * transferring, so a second pass in the same hour finds nothing left to pay.
+ */
+export function isPayoutWindow(now: Date): boolean {
+  return now.getUTCDay() === PAYOUT_DAY_UTC && now.getUTCHours() === PAYOUT_HOUR_UTC;
+}
+
 export interface PayoutResult {
   storeId: string;
   amountCents: number;
