@@ -244,15 +244,18 @@ endpoints exist.
 
 ## 2b. Catalog cache — DONE
 
-`scripts/sync-catalog.ts`, run 2026-08-11 over categories 6, 7, 8, 9 (men's and
-women's shirts and hoodies).
+`scripts/sync-catalog.ts`, re-run 2026-08-19 over categories 6, 7, 8, 9 (men's
+and women's shirts and hoodies). Took 513s. Printful had added six blanks and
+raised some base costs since the August 11 sync, so the cached figures were
+stale — Bella + Canvas 3001 moved $11.69 to $11.92, Gildan 5000 $9.25 to $9.44.
+Worth re-running periodically for that reason alone.
 
 | | |
 |---|---|
-| Blanks | 167 |
-| Variants | 7,859 |
-| Colors | 1,275 |
-| Print areas | 714 |
+| Blanks | 173 |
+| Variants | 8,575 |
+| Colors | 1,366 |
+| Print areas | 739 |
 | Incomplete blanks | 0 |
 | Blanks with no print areas | 0 |
 | Variants with invalid cost | 0 |
@@ -286,6 +289,32 @@ with `npm run curate -- --list`:
 
 Eight brands, $9.25–$18.95, all DTG-printable. Reversible with
 `npm run curate -- --disable --all --apply`, then re-enable what you want.
+
+### Two catalogue bugs, found from a screenshot 2026-08-19
+
+**Half the blanks showed no price, and nothing errored.** PostgREST caps a
+response at 1000 rows by default and `/api/catalog` fetched variants unpaged,
+so it got exactly 1000 rows covering six of twelve enabled blanks. Cotton
+Heritage was truncated mid-blank at 33 of its 71. Enabled blanks alone hold
+2,247 variants, so this worsened with every blank curated in. The fetch is
+paged now and all twelve price.
+
+Worth remembering as a class of bug: a silent truncation at a round number is
+almost always a default limit, not missing data.
+
+**Garments were named by SKU.** `model` is "3001" or "5001" for most blanks,
+which tells a first-time seller nothing. Printful had the name all along and
+the sync discarded it — their API returns "Unisex Staple T-Shirt | Bella +
+Canvas 3001" and a type of T-SHIRT. `0007` adds `display_name` and
+`garment_type`; the adapter keeps the part before the pipe, since brand and SKU
+already have their own columns.
+
+Note their `type` is coarse: both tank tops in the enabled set come back as
+T-SHIRT. Fine for grouping, not to be trusted as a description.
+
+Decoration codes were also being rendered as a raw array and concatenated on
+screen into "dtgembroiderydtf". `/api/catalog` now returns a joined
+`decorationLabel` of names a seller would recognise.
 
 ## 2c. Next.js scaffold — DONE
 
@@ -544,6 +573,15 @@ wrong amount refuses to fulfil.
 **`FULFILLMENT_LIVE` defaults to false.** Printful has no sandbox — a submitted
 order is a real garment really charged to us. Without this guard, testing the
 payment path end to end would place a real order. Flip it deliberately, once.
+
+**The platform fee moved from $6.31 to $5.00 on 2026-08-19.** 631 sat above the
+$4–6 band PROJECT.md specifies, and had been reverse-derived so the reference
+blank landed on a tidy $18.00 — the anchor was picked and the fee followed.
+More importantly a flat fee is regressive, and 631 made that bite: across the
+twelve enabled blanks it was 68% on the cheapest and 33% on the dearest, so the
+sellers with least money paid the highest markup. At 500 the spread is 54% to
+26%. `platform_fee_cents` is stored per variant, so existing products keep the
+fee they were created with.
 
 **Deferred by decision, do not re-raise as reminders:** the Printful resale
 certificate (worth 42c/order) and the merchant-of-record question. Both known,

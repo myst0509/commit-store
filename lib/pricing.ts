@@ -39,16 +39,26 @@ export const PASS_CARD_FEES_TO_CUSTOMER = false;
 /**
  * Our flat per-unit fee. PROJECT.md: a flat amount (~$4–6), never a percentage.
  *
- * Set so the reference blank — a Bella + Canvas 3001 at $11.69 — lands on a
- * seller cost of exactly $18.00. The fee is flat, so cheaper blanks cost sellers
- * less and dearer ones more; $18.00 is the number for this shirt, not for
- * everything.
+ * Lowered from 631 to 500 on 2026-08-19, for two reasons.
  *
- * At $32 retail that leaves the seller $14.00 and us $4.52, rising to $4.94 once
- * a resale certificate removes the vendor's sales tax. Changing it changes every
- * seller's unit cost, so it is a business decision rather than a tuning knob.
+ * 631 sat above the $4–6 band PROJECT.md specifies. It had been reverse-derived
+ * so the reference blank, a Bella + Canvas 3001 at $11.69, landed on a seller
+ * cost of exactly $18.00 — a tidy anchor, but the anchor was chosen and the fee
+ * followed, rather than the other way round.
+ *
+ * More importantly a flat fee is regressive, and 631 made that bite. Measured
+ * across the twelve enabled blanks it was 68% on the cheapest ($9.25 Gildan
+ * 5000) and 33% on the dearest ($18.95 AS Colour 5001). The sellers with least
+ * money to start with were paying the highest markup, which is backwards for a
+ * platform aimed at people with no money and no audience. At 500 the same
+ * spread is 54% to 26%.
+ *
+ * This is stored per variant in product_variants.platform_fee_cents, so
+ * existing products keep the fee they were created with and only new ones move.
+ * Changing it changes every future seller's unit cost, so it is a business
+ * decision rather than a tuning knob.
  */
-export const PLATFORM_FEE_CENTS = 631;
+export const PLATFORM_FEE_CENTS = 500;
 
 export interface EconomicsInput {
   /** Seller's retail price for the goods, excluding shipping. */
