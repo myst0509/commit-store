@@ -65,9 +65,21 @@ Three things about the number:
 The cost of this choice is a third line at checkout for a brand nobody has heard of, which is a
 real thing to lose. If it hurts conversion, reversing it is one line.
 
-It must be a **uniform service fee on every order regardless of payment method**, not a card
-surcharge: several US states restrict surcharging and the card networks prohibit it on debit.
-Worth legal review before launch — we are merchant of record, so it is our exposure.
+It must be a **uniform fee on every order regardless of payment method**, not a card surcharge:
+several US states restrict surcharging and the card networks prohibit it on debit. Worth legal
+review before launch — we are merchant of record, so it is our exposure.
+
+**That constraint decides the wording, so the wording lives in code.** `SERVICE_FEE_LABEL` and
+`SERVICE_FEE_EXPLANATION` in `lib/pricing.ts` are returned by `/api/checkout` alongside the
+amount, so no storefront can invent its own phrasing. The line reads:
+
+> **Processing** — $1.41
+> Covers the cost of taking payment securely. Same on every order.
+
+Nothing in either string may mention cards, credit, debit or the payment method; a test enforces
+that. "Card fee" and "Payment fee" are ruled out legally. "Service fee" and "Convenience fee" are
+ruled out because they are what ticket sites call the charge everyone resents, and this customer
+is already buying from a brand they have never heard of.
 
 All of this lives in `lib/pricing.ts`, the only place the arithmetic exists.
 `PASS_CARD_FEES_TO_CUSTOMER` flips the whole model in one line, and

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { computeEconomics, grossUpForStripe, sellerUnitCost, stripeFee } from "../lib/pricing";
+import { computeEconomics, grossUpForStripe, sellerUnitCost, stripeFee,
+  SERVICE_FEE_EXPLANATION,
+  SERVICE_FEE_LABEL,
+} from "../lib/pricing";
 
 /**
  * Real numbers throughout: a Bella + Canvas 3001 at $11.69 base, $4.75 shipping
@@ -227,5 +230,34 @@ describe("computeEconomics — seller margin matches the quoted cost", () => {
       quoted.platformNetCents - derived.platformNetCents,
       derived.sellerMarginCents - quoted.sellerMarginCents,
     );
+  });
+});
+
+describe("what the customer sees the fee called", () => {
+  // The wording is a legal constraint before it is a copy choice. PROJECT.md:
+  // this must be a uniform fee on every order, NOT a card surcharge, because
+  // several US states restrict surcharging and the networks prohibit it on
+  // debit. So the label and its explanation must never mention how they paid.
+  const forbidden = /card|credit|debit|visa|mastercard|surcharge/i;
+
+  it("never mentions the payment method in the label", () => {
+    assert.doesNotMatch(SERVICE_FEE_LABEL, forbidden);
+  });
+
+  it("never mentions the payment method in the explanation", () => {
+    assert.doesNotMatch(SERVICE_FEE_EXPLANATION, forbidden);
+  });
+
+  it("says the fee is the same for everyone, which is what makes it not a surcharge", () => {
+    assert.match(SERVICE_FEE_EXPLANATION, /every order/i);
+  });
+
+  it("is short enough to sit on a checkout line", () => {
+    assert.ok(SERVICE_FEE_LABEL.length <= 24, SERVICE_FEE_LABEL);
+    assert.ok(SERVICE_FEE_EXPLANATION.length <= 90, SERVICE_FEE_EXPLANATION);
+  });
+
+  it("avoids the words people associate with junk fees", () => {
+    assert.doesNotMatch(SERVICE_FEE_LABEL, /convenience|booking|admin/i);
   });
 });

@@ -52,6 +52,33 @@ const STRIPE_FIXED_CENTS = 30;
 export const PASS_CARD_FEES_TO_CUSTOMER = true;
 
 /**
+ * What the customer sees this line called, and how it is explained.
+ *
+ * The wording is a legal constraint before it is a copy choice. This must read
+ * as a uniform fee charged on every order, NOT as a card surcharge: several US
+ * states restrict surcharging and the card networks prohibit it on debit. So
+ * nothing here may mention cards, credit, debit or the payment method — not in
+ * the label, not in the explanation, not in a tooltip.
+ *
+ * Rejected for that reason: "Card fee", "Credit card fee", "Payment fee",
+ * "Payment processing".
+ *
+ * Rejected for reading as a junk fee: "Service fee" and "Convenience fee" are
+ * what airlines and ticket sites call the charge everyone resents, and this
+ * customer is already buying from a brand they have never heard of.
+ *
+ * "Processing" is what remains: it is honest about what the money does, it is
+ * a word people already meet in checkouts, it says nothing about how they paid,
+ * and it is short enough not to look defensive. The explanation matters as much
+ * as the label — an unexplained line is the thing that frightens people.
+ */
+export const SERVICE_FEE_LABEL = "Processing";
+
+/** One short sentence, shown next to the line rather than behind a tooltip. */
+export const SERVICE_FEE_EXPLANATION =
+  "Covers the cost of taking payment securely. Same on every order.";
+
+/**
  * Our flat per-unit fee. PROJECT.md: a flat amount (~$4–6), never a percentage.
  *
  * Lowered from 631 to 500 on 2026-08-19, for two reasons.

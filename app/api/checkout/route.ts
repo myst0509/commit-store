@@ -1,4 +1,5 @@
 import { errorResponse } from "@/lib/auth/session";
+import { SERVICE_FEE_EXPLANATION, SERVICE_FEE_LABEL } from "@/lib/pricing";
 import { createCheckout } from "@/lib/orders/checkout";
 import type { ShippingAddress } from "@/lib/fulfillment/types";
 import { resolveStore } from "@/lib/store/resolve";
@@ -79,6 +80,11 @@ export async function POST(req: Request): Promise<Response> {
         goodsCents: quote.economics.subtotalCents - quote.shippingCents,
         shippingCents: quote.shippingCents,
         serviceFeeCents: quote.economics.serviceFeeCents,
+        // Sent with the amount so the wording cannot drift between what we
+        // decided and what a storefront happens to render. See lib/pricing.ts
+        // for why it is not called anything mentioning cards.
+        serviceFeeLabel: SERVICE_FEE_LABEL,
+        serviceFeeExplanation: SERVICE_FEE_EXPLANATION,
         totalCents: quote.economics.customerPaysCents,
       },
     }, { status: 200 });
