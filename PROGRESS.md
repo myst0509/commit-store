@@ -833,16 +833,24 @@ guessed is in its own section at the end and marked as such.
 
 ### Per order
 
-Reference: Bella + Canvas 3001, seller cost $18.00, retail $32.00.
+Reference: Bella + Canvas 3001, seller cost $16.69, retail $32.00. Re-run
+2026-08-19 after the fee dropped to $5.00.
 
-| | Now | With resale certificate |
+| | Absorb Stripe (current) | Service fee |
 |---|---|---|
-| Customer pays | $36.75 | $36.75 |
-| Seller earns | $14.00 | $14.00 |
-| Gross markup | $5.89 | $6.31 |
-| Stripe | −$1.37 | −$1.37 |
-| Vendor sales tax | −$0.42 | $0.00 |
-| **We keep** | **$4.52** | **$4.94** |
+| Customer pays | $36.75 | $38.16 |
+| Seller earns | $15.31 | $15.31 |
+| Gross markup | $4.58 | $4.58 |
+| Stripe | −$1.37 | covered by the fee |
+| **We keep** | **$3.21** | **$4.58** |
+
+With a resale certificate, absorbing Stripe becomes $3.63 rather than $3.21.
+
+**`npm run pricing:model` was itself reporting stale figures.** It pinned the
+seller's unit cost at a hard-coded 1800, which was the blank plus the OLD $6.31
+fee, so dropping the fee changed nothing in its output. Now derived from
+`PLATFORM_FEE_CENTS`. A model with a constant baked into it stops modelling the
+moment that constant moves.
 
 **PROJECT.md and `lib/pricing.ts` disagree here, and it is worth $1.37 an
 order.** PROJECT.md records the service fee as settled on 2026-08-11, with the
