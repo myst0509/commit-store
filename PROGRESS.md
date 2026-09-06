@@ -3,7 +3,7 @@
 Living status of the build. Update it when something lands — this file is the
 only memory that survives between sessions.
 
-**Last updated:** 2026-08-19 · 184 unit tests + 50 integration checks
+**Last updated:** 2026-08-19 · 192 unit tests + 50 integration checks
 
 The money path is complete in code and verified against Stripe test mode:
 reserve → threshold → capture → produce → deliver → ledger → payout, with
@@ -1006,6 +1006,11 @@ unauthenticated visits redirect to sign-in, server error messages shown as-is.
 | Guide as home, store after launch | **DONE** — behaviour unverified, needs a signed-in look |
 | Public homepage and directory | **DONE** — `/`, `/how-it-works`, `/stores` live |
 | One home, Launch tab arrives on completion | **DONE** — prompt 10 |
+| Steps in place, garments page, side nav, $ prices | **TODO** — prompt 15 |
+| Three-phase guide | **DONE** — prompt 17 |
+| Full UI refinement (corrected ChatGPT brief) | **TODO** — prompt 18, supersedes 12/15/16 |
+| Google sign-in | **TODO** — prompt 19; Supabase provider config first |
+| "What should we call you?" | **TODO** — prompt 20; `/api/me` built |
 | Visual direction | **TODO** — prompt 11 applied but rejected; prompt 12 replaces it |
 
 **Visual direction settled 2026-08-19 as linear.app**, after prompt 11's
@@ -1044,6 +1049,16 @@ Note the upsert keys on `(store_id, slug)`, so reusing a name edits the
 existing product rather than making another. `POST` refuses a duplicate name
 with a message saying so, rather than letting a seller wonder where their
 product went.
+
+**`/api/me` added 2026-08-19.** `GET` and `PATCH` for what the seller wants to
+be called. Lives on the auth user rather than `stores`, because the store is
+the brand and this is the person. Written through the service role so the
+name is validated — 40 characters, control and bidirectional characters
+stripped — rather than the browser calling `supabase.auth.updateUser` and
+skipping all of that. User metadata is user-writable in Supabase, which is
+fine for a display name and must never be trusted for anything that grants
+access. `seller.name` on `/api/dashboard` is null unless it was set, and the
+UI is told never to derive one from the email address.
 
 **`/api/store` added 2026-08-19.** `GET` and `PATCH` for brand name, web
 address and theme. Until it existed a store could only ever be named once, by

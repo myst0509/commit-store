@@ -1479,10 +1479,79 @@ or not a name exists. The greeting sits above it when we have one.
 
 DO NOT
 - Do not invent, guess or derive a name.
-- Do not add a "what should we call you?" prompt to the dashboard. If the name
-  is worth collecting from password signups, that is a decision to make once,
-  not a banner to nag with.
+- Superseded by prompt 20: the name is now asked for once after sign-in, and
+  Google's name, when present, pre-fills that question.
 - Do not remove email and password sign-in.
+```
+
+### 20. "What should we call you?"
+
+Decided 2026-08-19: ask the person, once, after sign-in. Works for every
+account regardless of how they signed up, and lets them choose what they go by
+rather than reading a legal name off a payment method.
+
+Backend is `GET` and `PATCH /api/me`:
+
+```
+GET  /api/me         -> { name, email, needsName }
+PATCH /api/me        { name }  -> same shape
+```
+
+`name` is validated: trimmed, whitespace collapsed, control characters
+stripped, 40 characters or fewer. Send `null` to clear it. This replaces the
+Google-only greeting in prompt 19; Google sign-in can still be added, and if it
+supplies a name that name pre-fills the question.
+
+```
+Ask the seller what to call them, once, and use it.
+
+1. THE QUESTION
+
+Right after sign-in, if GET /api/me returns needsName: true, show a single
+small screen before the dashboard:
+
+  What should we call you?
+  Your name, or whatever you'd rather go by.
+
+  [                              ]
+
+  Continue          Skip for now
+
+That last line of copy matters. It is not "enter your full name". People go by
+shortenings, chosen names and handles, and this is theirs to decide.
+
+Continue sends PATCH /api/me { name }. Skip goes straight to the dashboard and
+does not ask again this session. Ask again next sign-in only while needsName
+is still true; once they have answered or explicitly skipped twice, stop.
+
+If the field is pre-filled because Google supplied a name, show it as the
+default and let them change it before continuing.
+
+Errors come back as { error } with the real reason, for instance a length
+message that says how many characters they typed. Show it beside the field.
+
+2. THE GREETING
+
+GET /api/dashboard returns seller: { name, email }.
+
+  name present   "Good morning, Sam"
+  name null      no greeting
+
+Time of day from the browser: morning, afternoon, evening. No fallback to the
+email address or any part of it, ever.
+
+3. CHANGING IT LATER
+
+In /settings, an "About you" section with one field, the name, calling
+PATCH /api/me. Clearing the field and saving sends null, and the greeting goes
+away rather than reverting to something else.
+
+DO NOT
+- Do not derive a name from the email address.
+- Do not block the dashboard behind the question. Skip must always work.
+- Do not put a nag banner on the dashboard for people who skipped.
+- Do not call supabase.auth.updateUser from the browser for this. Go through
+  PATCH /api/me, which is where the validation lives.
 ```
 
 ### The public directory endpoint
